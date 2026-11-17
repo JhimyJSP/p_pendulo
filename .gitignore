@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Datos y artefactos reproducibles que no deben versionarse.
+/data/train_flat.csv
+/data/test_flat.csv
+/results/
+/results-*/
+*.pt
+*.pth

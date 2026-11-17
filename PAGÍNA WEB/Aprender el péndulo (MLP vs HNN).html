@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b2d">
+  <title>Aprender el péndulo: MLP y HNN</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+      chtml: { scale: 1.05 }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #edf2f7;
+      --muted: #a7b5c8;
+      --bg: #101b2d;
+      --panel: rgba(25, 39, 59, .82);
+      --line: rgba(192, 211, 231, .16);
+      --mint: #72e0c1;
+      --gold: #f2bf75;
+      --coral: #ff8e83;
+      --blue: #8ebcff;
+      --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      --sans: Inter, "Aptos", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box }
+    html, body { width: 100%; height: 100%; margin: 0 }
+    body {
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 75% 13%, rgba(114, 224, 193, .13), transparent 34%),
+        radial-gradient(ellipse at 12% 89%, rgba(142, 188, 255, .12), transparent 37%),
+        linear-gradient(140deg, #0d1727, #142239 56%, #101b2d);
+      font: 16px/1.5 var(--sans);
+    }
+    body::before {
+      position: fixed; inset: 0; pointer-events: none; content: "";
+      opacity: .14;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
+      mix-blend-mode: soft-light;
+    }
+    button, input { font: inherit }
+    button { color: inherit }
+    #deck { height: 100%; position: relative; }
+    .slide {
+      display: none; position: absolute; inset: 0; overflow-y: auto;
+      padding: clamp(24px, 5vh, 58px) clamp(24px, 7vw, 104px) 94px;
+      align-items: center; justify-content: center;
+    }
+    @page { size: 16in 9in; margin: 0; }
+    .slide.active { display: flex; animation: appear .5s ease both; }
+    .content { width: min(1120px, 100%); margin: auto; }
+    .slide p { text-align: justify; hyphens: auto; }
+    @keyframes appear { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+    h1, h2, h3, p { margin-top: 0 }
+    h1, h2 {
+      font-family: var(--serif); font-weight: 500; letter-spacing: -.035em;
+      text-align: center;
+    }
+    h1 { font-size: clamp(2.6rem, 6vw, 5.6rem); line-height: .99; max-width: 860px; margin-bottom: 22px; }
+    h2 { font-size: clamp(2rem, 4vw, 3.55rem); line-height: 1.06; margin-bottom: 14px; }
+    h3 { font-size: 1rem; margin-bottom: 8px; }
+    .lede { color: #d3deeb; font-size: clamp(1.05rem, 1.8vw, 1.32rem); max-width: 730px; }
+    .muted, .note { color: var(--muted); }
+    .accent { color: var(--mint); }
+    .gold { color: var(--gold); }
+    .coral { color: var(--coral); }
+    .serif { font-family: var(--serif); }
+    .hero { display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; }
+    .hero > div:first-child { width: 100%; }
+    .hero h1 { max-width: 1000px; margin: 0 auto 18px; font-size: clamp(2rem, 4.3vw, 4.8rem); }
+    .hero p { text-align: center; }
+    .hero .lede { max-width: 820px; margin-left: auto; margin-right: auto; }
+    .hero .muted { text-align: center; }
+    .hero-art { width: min(100%, 340px); min-height: 270px; margin-top: 4px; display: grid; place-items: center; position: relative; }
+    .hero-art::before { content:""; position:absolute; width:min(30vw,300px); aspect-ratio:1; border:1px solid var(--line); border-radius:50%; box-shadow:0 0 90px rgba(114,224,193,.08), inset 0 0 65px rgba(114,224,193,.06); }
+    #heroCanvas { width: min(100%, 300px); aspect-ratio: 1; position: relative; }
+    .tagline { display: inline-flex; gap: 9px; align-items: center; padding: 8px 13px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .82rem; }
+    .tagline span { width: 7px; height: 7px; background: var(--mint); border-radius: 50%; box-shadow: 0 0 12px var(--mint); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .panel {
+      min-width: 0; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 18px; padding: clamp(17px, 2.4vw, 26px);
+      box-shadow: 0 15px 40px rgba(0,0,0,.12); backdrop-filter: blur(12px);
+    }
+    .equation {
+      font-family: var(--serif); font-size: clamp(1.17rem, 2.2vw, 1.7rem);
+      letter-spacing: .01em; line-height: 1.8; text-align: center;
+      color: #f5f1e8;
+    }
+    .equation .small { display: block; font-size: .82em; color: var(--muted); }
+    .equation sub { font-size: .65em; vertical-align: -.25em; }
+    .equation sup { font-size: .65em; }
+    .math-block { text-align: center; margin: 18px 0; font-size: clamp(1.05rem, 2vw, 1.4rem); color: #f5f1e8; }
+    .math-block .small { display: block; margin-top: .35em; color: var(--muted); font-size: .86em; line-height: 1.55; }
+    .math-block .mjx-container { margin: .35em 0 !important; }
+    .network-canvas { height: 300px !important; }
+    .network-output { min-height: 78px; display: grid; place-items: center; font-size: clamp(1.08rem, 1.7vw, 1.35rem); line-height: 1.55; }
+    .network-output .mjx-container { margin: .2em 0 !important; }
+    .callout { border-left: 2px solid var(--mint); padding: 2px 0 2px 15px; color: #d3deeb; }
+    .sim-switch, .sim-actions, .optimizer-options { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sim-switch { margin-bottom: 10px; }
+    .sim-actions { margin: 15px 0; }
+    .optimizer-grid { grid-template-columns: minmax(0,1.35fr) minmax(250px,.65fr); }
+    .sim-button, .row button {
+      cursor: pointer; border: 1px solid var(--line); border-radius: 999px;
+      padding: 8px 13px; background: rgba(255,255,255,.055); color: var(--muted);
+    }
+    .sim-button:hover, .row button:hover { border-color: var(--mint); color: var(--ink); }
+    .sim-button.on, .row button.on { background: rgba(114,224,193,.14); border-color: var(--mint); color: var(--mint); }
+    .optimizer-options { margin: 12px 0; }
+    .optimizer-options .sim-button { flex: 1; min-width: 62px; }
+    .optimizer-card { display: flex; flex-direction: column; justify-content: center; }
+    .sim-readout { font-variant-numeric: tabular-nums; color: var(--mint); }
+    .sim-readout { font-size: .84rem; overflow-wrap: anywhere; }
+    .sim-legend { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: .78rem; margin-top: 8px; }
+    .legend-mark { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+    .controls { display: grid; grid-template-columns: auto minmax(90px, 1fr) 58px; gap: 8px 12px; align-items: center; margin: 14px 0; }
+    #netPOut, #rolloutMomentumOut { font-size: .72rem; white-space: normal; overflow-wrap: anywhere; }
+    input[type=range] { width: 100%; accent-color: var(--mint); }
+    output { color: var(--mint); font-variant-numeric: tabular-nums; text-align: right; }
+    canvas.chart {
+      display: block; width: 100%; height: 265px;
+      border-radius: 12px; background: rgba(6,14,25,.35);
+    }
+    #pendulumCanvas { height: 245px; }
+    #optimizerCanvas { height: 310px; }
+    #deck .slide:nth-child(2) { padding-top: 24px; padding-bottom: 72px; }
+    #deck .slide:nth-child(2) .math-block { margin-top: 12px; margin-bottom: 12px; }
+    #deck .slide:nth-child(2) .callout { margin-top: 12px !important; }
+    #deck .slide:nth-child(3) { padding-top: 10px; padding-bottom: 46px; }
+    #deck .slide:nth-child(3) h2 { margin-bottom: 9px; }
+    #deck .slide:nth-child(3) .lede { margin-bottom: 12px; }
+    #deck .slide:nth-child(3) .panel { padding: 18px; }
+    #deck .slide:nth-child(3) #optimizerCanvas { height: 270px; }
+    #deck .slide:nth-child(4) { padding-top: 12px; padding-bottom: 60px; }
+    #deck .slide:nth-child(4) .network-canvas { height: 220px !important; }
+    #deck .slide:nth-child(6) { padding-top: 14px; padding-bottom: 56px; }
+    #deck .slide:nth-child(6) h2 { margin-bottom: 8px; }
+    #deck .slide:nth-child(6) .lede { margin-bottom: 12px; }
+    #deck .slide:nth-child(6) .panel { padding: 14px; }
+    #deck .slide:nth-child(6) .controls { margin: 8px 0; gap: 6px 10px; }
+    #deck .slide:nth-child(6) .sim-actions { margin: 8px 0; }
+    #rolloutCanvas { height: 230px; }
+    .rollout-grid { grid-template-columns: minmax(0,1.3fr) minmax(270px,.7fr); }
+    .rollout-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+    .rollout-metric { padding: 10px; border: 1px solid var(--line); border-radius: 12px; }
+    .rollout-metric strong { display: block; color: var(--mint); font-variant-numeric: tabular-nums; }
+    .rollout-metric span { color: var(--muted); font-size: .76rem; }
+    #deck .slide:nth-child(8) { padding-top: 16px; }
+    #deck .slide:nth-child(8) .method { padding: 8px 0; }
+    #deck .slide:nth-child(8) .note { margin-top: 12px !important; }
+    #deck .slide:nth-child(8) .grid { grid-template-columns: minmax(0, 1fr); }
+    #deck .slide:nth-child(8) .grid > .panel:first-child {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+    }
+    #deck .slide:nth-child(8) .method {
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; height: 100%; padding: 16px 14px; border: 1px solid var(--line);
+      border-radius: 14px; background: rgba(255,255,255,.025); text-align: center;
+    }
+    #deck .slide:nth-child(8) .method small { text-align: center; }
+    #deck .slide:nth-child(8) .panel:last-child { display: flex; flex-direction: column; justify-content: center; }
+    #deck .slide:nth-child(8) .panel:last-child h3 { text-align: center; }
+    #deck .slide:nth-child(8) .panel:last-child .equation { text-align: center; }
+    #deck .slide:nth-child(9) { padding-top: 24px; padding-bottom: 72px; }
+    .references { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; margin-top: 26px; }
+    .reference { margin: 0; padding-left: 1.25em; text-indent: -1.25em; font-size: clamp(.82rem, 1vw, .98rem); line-height: 1.5; text-align: left !important; overflow-wrap: anywhere; }
+    #deck .slide:nth-child(7) { padding-top: 16px; padding-bottom: 72px; }
+    #deck .slide:nth-child(7) .table th,
+    #deck .slide:nth-child(7) .table td { padding-top: 8px; padding-bottom: 8px; }
+    .stat { font-family: var(--serif); font-size: clamp(1.8rem, 3vw, 2.6rem); line-height: 1; color: var(--mint); margin: 8px 0; }
+    .stat-label { color: var(--muted); font-size: .86rem; }
+    .pipeline { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 9px; margin: 24px 0; }
+    .step { background: rgba(255,255,255,.045); border: 1px solid var(--line); padding: 11px 15px; border-radius: 12px; text-align: center; }
+    .arrow { color: var(--mint); font-size: 1.25rem; }
+    .table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .91rem; }
+    .table th, .table td { border-bottom: 1px solid var(--line); padding: 11px 9px; text-align: right; }
+    .table th { color: var(--muted); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 650; }
+    .table th:first-child, .table td:first-child { text-align: left; }
+    .table tr:last-child td { border: 0; }
+    .table-wrap { overflow-x: auto; }
+    .arch-table { min-width: 700px; font-size: .82rem; }
+    .arch-table td, .arch-table th { padding: 9px 7px; }
+    .winner td:first-child { color: var(--mint); font-weight: 700; }
+    .method { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .method:first-child { border-top: 0; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+    .method strong { display: block; }
+    .method small { color: var(--muted); text-align: justify; }
+    .bar-row { display: grid; grid-template-columns: 90px 1fr 94px; align-items: center; gap: 12px; margin: 13px 0; font-size: .86rem; }
+    .bar-track { height: 9px; border-radius: 10px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .bar { height: 100%; border-radius: inherit; }
+    .pill { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--muted); font-size: .78rem; margin: 3px 4px 3px 0; }
+    #hud { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; align-items: center; padding: 14px clamp(18px, 4vw, 54px); background: linear-gradient(transparent, rgba(10,17,29,.94) 35%); }
+    .navgroup { display: flex; align-items: center; gap: 9px; }
+    .navbtn { cursor: pointer; border: 1px solid var(--line); background: rgba(255,255,255,.055); width: 40px; height: 40px; border-radius: 50%; font-size: 1.05rem; }
+    .navbtn:hover { border-color: var(--mint); color: var(--mint); }
+    #counter { color: var(--muted); min-width: 54px; text-align: center; font-variant-numeric: tabular-nums; }
+    #dots { display: flex; gap: 7px; }
+    .dot { width: 7px; height: 7px; border: 0; padding: 0; border-radius: 10px; background: #617086; cursor: pointer; transition: .25s; }
+    .dot.active { width: 25px; background: var(--mint); }
+    #progress { position: fixed; z-index: 6; left: 0; top: 0; height: 2px; background: var(--mint); transition: width .3s; }
+    .hint { font-size: .76rem; color: var(--muted); }
+    @media (min-width: 761px) {
+      #deck .slide:nth-child(2) { padding-top: 10px; padding-bottom: 50px; }
+      #deck .slide:nth-child(2) .panel { padding: 14px; }
+    }
+    @media (min-width: 761px) and (max-width: 1100px) {
+      #deck .slide:nth-child(3) .optimizer-grid { grid-template-columns: minmax(0,1.1fr) minmax(290px,.9fr); }
+      #deck .slide:nth-child(3) .panel { padding: 14px; }
+      #deck .slide:nth-child(3) .sim-actions .sim-button { padding: 6px 9px; font-size: .8rem; }
+      .rollout-grid { grid-template-columns: minmax(0,1.1fr) minmax(290px,.9fr); }
+    }
+    @media (max-width: 760px) {
+      .hero-art { min-height: 230px; }
+      .hero-art::before { width: 220px; }
+      #heroCanvas { width: 250px; max-height: 240px; }
+      #pendulumCanvas { height: 220px; }
+      #optimizerCanvas { height: 245px; }
+      .network-canvas { height: 240px !important; }
+      .grid, .grid.three { grid-template-columns: 1fr; }
+      .optimizer-grid { grid-template-columns: 1fr; }
+      .rollout-grid { grid-template-columns: 1fr; }
+      .references { grid-template-columns: 1fr; gap: 12px; }
+      .slide { align-items: flex-start; }
+      .controls { grid-template-columns: minmax(0, 1.1fr) minmax(48px, 1fr) 58px; gap: 8px 6px; }
+      #deck .slide:nth-child(8) .grid > .panel:first-child { grid-template-columns: 1fr; }
+      .table { font-size: .78rem; }
+      .table th, .table td { padding: 9px 5px; }
+      .bar-row { grid-template-columns: 78px 1fr 77px; gap: 7px; font-size: .78rem; }
+      #dots { display: none; }
+      .hint { display: none; }
+    }
+    @media (max-height: 720px) {
+      .hero { gap: 4px; }
+      .hero h1 { font-size: clamp(1.75rem, 4.2vw, 3rem); margin-bottom: 10px; }
+      .hero .lede { font-size: 1rem; margin-bottom: 8px; }
+      .hero .muted { margin-bottom: 4px; }
+      .hero-art { width: min(100%, 260px); min-height: 210px; margin-top: 0; }
+      .hero-art::before { width: 210px; }
+      #heroCanvas { width: min(100%, 230px); }
+    }
+    @media (max-width: 360px) {
+      #deck .slide:nth-child(2) .panel:first-child .math-block { font-size: .8rem; }
+    }
+    @media print {
+      html, body { width: 16in; height: auto; overflow: visible; background: #101b2d; }
+      #deck { height: auto; }
+      .slide { position: relative; display: flex !important; width: 16in; height: 9in; overflow: hidden; padding: 40px 72px; break-after: page; }
+      .slide:last-child { break-after: auto; }
+      #hud, #progress { display: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div id="progress"></div>
+  <main id="deck" aria-live="polite">
+    <section class="slide active" aria-label="Diapositiva 1 de 9">
+      <div class="content hero">
+        <div>
+          
+          <h1>Aprendizaje de la dinámica de un péndulo simple mediante perceptrones multicapa y <span class="accent">redes neuronales hamiltonianas</span></h1>
+          <p class="lede">¿Cómo le enseñamos a las redes neuronales la dinámica de un péndulo simple?</p>
+          <p class="muted">Alumno: Jhimy Jhonathan Sayas Parodi</p>
+          
+          
+        </div>
+        <div class="hero-art"><canvas id="heroCanvas" aria-label="Animación de un péndulo"></canvas></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 2 de 9">
+      <div class="content">
+        <h2>El movimiento del péndulo puede describirse por su <span class="accent">ángulo y su momento angular</span>.</h2>
+        <div class="grid">
+          <div class="panel">
+            <p class="muted">En cada instante el estado del péndulo se describe mediante:</p>
+            <div class="math-block">
+              \((q,p)\)
+              <span class="small">\(q\) representa el ángulo y \(p\), el momento angular.</span>
+            </div>
+            <div class="math-block">
+              \[
+                H(q,p)=\frac{p^2}{2ml^2}+mgl\bigl(1-\cos q\bigr)
+              \]
+              <span class="small">La energía total es la suma de la energía cinética y la energía potencial</span>
+            </div>
+            <div class="math-block">
+              \[
+                \begin{aligned}
+                  \dot q&=\frac{\partial H}{\partial p}=\frac{p}{ml^2},\\
+                  \dot p&=-\frac{\partial H}{\partial q}=-mgl\sin q
+                \end{aligned}
+              \]
+            </div>
+            <p class="callout" style="margin:20px 0 0">En este proyecto se consideran \(m=l=1\) y \(g=9.81\,\mathrm{m/s^2}\). Además, no se considera rozamiento; por lo tanto la energía mecánica se conserva.</p>
+          </div>
+          <div class="panel">
+            <h3>El movimiento del péndulo visto desde dos perspectivas</h3>
+            <div class="sim-switch" role="group" aria-label="Vista de la simulación del péndulo">
+              <button id="showPendulum" class="sim-button on" aria-pressed="true">Péndulo</button>
+              <button id="showPhase" class="sim-button" aria-pressed="false">Espacio de estados</button>
+            </div>
+            <canvas id="pendulumCanvas" class="chart" aria-label="Simulación interactiva del péndulo y su espacio de estados"></canvas>
+            <div class="controls">
+              <label for="angle">Ángulo inicial</label><input id="angle" type="range" min="-2.7" max="2.7" step=".05" value="1.15"><output id="angleOut">1.15 rad</output>
+              <label for="momentum">Momento inicial</label><input id="momentum" type="range" min="-5" max="5" step=".1" value="0"><output id="momentumOut">0.0 kg·m²/s</output>
+            </div>
+            <p id="phaseHint" class="note" style="font-size:.82rem;margin-bottom:0">Al cambiar el estado inicial, la energía se conserva.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 3 de 9">
+      <div class="content">
+        <h2>Entrenar es ajustar los pesos de la red para <span class="accent">disminuir el error en la predicción</span>.</h2>
+        <p class="lede">El optimizador avanza sobre el paisaje de pérdida buscando el error mínimo. Existen diferentes métodos para disminuir el error, como SGD, Momentum y Adam. Además, se puede modificar su tasa de aprendizaje para observar el recorrido del optimizador sobre el paisaje de pérdida.</p>
+        <div class="grid optimizer-grid">
+          <div class="panel">
+            <canvas id="optimizerCanvas" class="chart" aria-label="Superficie de pérdida y ruta interactiva del optimizador"></canvas>
+            <div class="sim-legend">
+              <span><i class="legend-mark" style="background:#f2bf75"></i>Pesos actuales</span>
+              <span><i class="legend-mark" style="background:#72e0c1"></i>Menor error</span>
+              <span>Curvas: mismo nivel de pérdida</span>
+            </div>
+          </div>
+          <div class="panel optimizer-card">
+            <h3>1 · Elige el optimizador</h3>
+            <div class="optimizer-options" role="group" aria-label="Método de optimización">
+              <button class="sim-button on" data-optimizer="sgd" aria-pressed="true">SGD</button>
+              <button class="sim-button" data-optimizer="momentum" aria-pressed="false">Momentum</button>
+              <button class="sim-button" data-optimizer="adam" aria-pressed="false">Adam</button>
+            </div>
+            <p id="optimizerDescription" class="note" style="font-size:.82rem">SGD sigue la inclinación del paisaje donde se encuentra.</p>
+            <p class="note" style="font-size:.82rem">En cada paso ajustamos los pesos para disminuir el error: \(\mathbf{w}\leftarrow\mathbf{w}-\eta\nabla L(\mathbf{w})\). Los optimizadores nos dicen cómo modificar los pesos.</p>
+            <h3>2 · Ajusta la tasa de aprendizaje \(\eta\)</h3>
+            <div class="controls">
+              <label for="learningRate">Tamaño de paso</label>
+              <input id="learningRate" type="range" min=".02" max=".36" step=".01" value=".12">
+              <output id="learningRateOut">0.12</output>
+            </div>
+            <div class="sim-actions">
+              <button id="optimizerStep" class="sim-button">Un paso</button>
+              <button id="optimizerPlay" class="sim-button on">Iniciar</button>
+              <button id="optimizerReset" class="sim-button">Reiniciar</button>
+            </div>
+            <p id="optimizerReadout" class="sim-readout" aria-live="polite"></p>
+            <p id="optimizerFeedback" class="note" style="font-size:.82rem;margin-bottom:0"></p>
+          </div>
+        </div>
+        <p class="note" style="font-size:.78rem;margin-top:12px">En el proyecto se utilizó Adam para entrenar las redes MLP y HNN.</p>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 4 de 9">
+      <div class="content">
+        <h2>¿Qué hace cada red con los datos de entrada?</h2>
+        <p class="muted">El diagrama muestra la arquitectura de las redes MLP-64 y HNN-64.</p>
+        <div class="grid">
+          <div class="panel">
+            <canvas id="networkCanvas" class="chart network-canvas" aria-label="Diagrama interactivo de las capas de una red neuronal"></canvas>
+            <div class="controls">
+              <label for="netQ">Ángulo \(q\)</label><input id="netQ" type="range" min="-2.7" max="2.7" step=".05" value=".7"><output id="netQOut">0.70 rad</output>
+              <label for="netP">Momento \(p\)</label><input id="netP" type="range" min="-5" max="5" step=".1" value="1.2"><output id="netPOut">1.2 kg·m²/s</output>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="row">
+              <button id="showMlp" class="on">MLP-64</button>
+              <button id="showHnn">HNN-64</button>
+            </div>
+            <p id="networkCaption" class="muted">Cada capa combina entradas con pesos y aplica \(\tanh\).</p>
+            <div id="networkOutput" class="network-output equation" aria-live="polite"></div>
+            <div id="networkFormula" class="math-block"></div>
+            <p id="networkReference" class="note" style="font-size:.82rem"></p>
+            
+          </div>
+        </div>
+        <p class="note" style="font-size:.8rem;margin-top:12px">Los controles barren valores fuera del intervalo energético usado para entrenar las redes.</p>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 5 de 9">
+      <div class="content">
+        <h2>¿Aumentar la cantidad de neuronas significa obtener <span class="accent">mejores trayectorias</span>?</h2>
+        <p class="muted">Se entrenaron redes con dos capas ocultas de 32, 64 y 128 neuronas.</p>
+        <div class="panel">
+          <div class="table-wrap">
+            <table class="table arch-table">
+              <thead><tr><th>Modelo</th><th>Parámetros</th><th>RMSE q̇ (rad/s)</th><th>RMSE ṗ (kg·m²/s²)</th><th>RMSE rollout q (rad)</th><th>RMSE rollout p (kg·m²/s)</th><th>Deriva media H (J)</th></tr></thead>
+              <tbody>
+                <tr><td>MLP-32</td><td>1 218</td><td>0.002072</td><td>0.01909</td><td>0.007271</td><td>0.01933</td><td>0.009863</td></tr>
+                <tr><td>MLP-64</td><td>4 482</td><td>0.002405</td><td>0.01449</td><td><b>0.004221</b></td><td><b>0.01137</b></td><td>0.009427</td></tr>
+                <tr><td>MLP-128</td><td>17 154</td><td><b>0.001969</b></td><td>0.01287</td><td>0.004435</td><td>0.01174</td><td>0.005559</td></tr>
+                <tr><td>HNN-32</td><td>1 185</td><td>0.008210</td><td>0.01974</td><td>0.01515</td><td>0.04169</td><td>0.002983</td></tr>
+                <tr><td>HNN-64</td><td>4 417</td><td>0.006217</td><td>0.01150</td><td>0.007934</td><td>0.02161</td><td>0.002457</td></tr>
+                <tr><td>HNN-128</td><td>17 025</td><td>0.006413</td><td><b>0.01074</b></td><td>0.007723</td><td>0.02107</td><td><b>0.001821</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note" style="font-size:.8rem;margin:10px 0 0">EL RMSE mide el error entre las predicciones y los datos físicos de q punto y p punto. Se uso 200 trayectorias y cada una tuvo una duración de 4 segundos con el objetivo de medir el movimiento y la energía.</p>
+        </div>
+        <p class="callout" style="margin-top:14px">NO existe el modelo mejor: MLP-128 redujo el error de q̇, HNN-128 minimizó el error de ṗ y mejoró en la predicción de energía, y MLP-64 redujo los errores de trayectoria. Más neuronas no garantizan un mejor rollout. Esto sugiere que más neuronas no mejora la predicción de las trayectorias.</p>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 6 de 9">
+      <div class="content">
+        <h2>¿Cómo evoluciona la trayectoria de <span class="accent">cada red para cierta condición inicial</span>?</h2>
+        <p class="lede">Predecimos la evolución de la trayectoria con los pesos entrenados a partir de una condición inicial. </p>
+        <div class="grid rollout-grid">
+          <div class="panel">
+            <div class="sim-switch" role="group" aria-label="Magnitud mostrada en la simulación">
+              <button id="rolloutPosition" class="sim-button on" aria-pressed="true">Ángulo \(q(t)\)</button>
+              <button id="rolloutEnergy" class="sim-button" aria-pressed="false">Energía física \(H(t)-H(0)\)</button>
+            </div>
+            <canvas id="rolloutCanvas" class="chart" aria-label="Comparación de la trayectoria física y las predicciones MLP y HNN"></canvas>
+            <div class="controls">
+              <label for="rolloutAngle">Ángulo inicial \(q_0\)</label>
+              <input id="rolloutAngle" type="range" min="-1.8" max="1.8" step=".05" value="1.1">
+              <output id="rolloutAngleOut">1.10 rad</output>
+              <label for="rolloutMomentum">Momento inicial \(p_0\)</label>
+              <input id="rolloutMomentum" type="range" min="-2.5" max="2.5" step=".1" value="0">
+              <output id="rolloutMomentumOut">0.0 kg·m²/s</output>
+            </div>
+            <div class="controls">
+              <label for="rolloutTime">Tiempo \(t\)</label>
+              <input id="rolloutTime" type="range" min="0" max="4" step=".02" value="0">
+              <output id="rolloutTimeOut">0.00 s</output>
+            </div>
+            <div class="sim-actions">
+              <button id="rolloutPlay" class="sim-button">Reproducir</button>
+              <button id="rolloutReset" class="sim-button">Volver al inicio</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Errores para la condición inicial elegida</h3>
+            <div class="sim-legend">
+              <span><i class="legend-mark" style="background:#edf2f7"></i>Dinámica física</span>
+              <span><i class="legend-mark" style="background:#8ebcff"></i>MLP-64</span>
+              <span><i class="legend-mark" style="background:#72e0c1"></i>HNN-64</span>
+            </div>
+            <div class="rollout-metrics">
+              <div class="rollout-metric"><strong id="mlpRolloutRmse">—</strong><span>RMSE de \(q(t)\), MLP</span></div>
+              <div class="rollout-metric"><strong id="hnnRolloutRmse">—</strong><span>RMSE de \(q(t)\), HNN</span></div>
+              <div class="rollout-metric"><strong id="mlpEnergyDrift">—</strong><span>máx. \(\lvert H-H_0\rvert\), MLP</span></div>
+              <div class="rollout-metric"><strong id="hnnEnergyDrift">—</strong><span>máx. \(\lvert H-H_0\rvert\), HNN</span></div>
+            </div>
+            <p id="rolloutReadout" class="sim-readout" aria-live="polite"></p>
+            <p id="rolloutHint" class="callout">La MLP predice el campo vectorial \((\dot q,\dot p)\). La HNN aprende \(H_\theta\), definido hasta una constante, y calcula el campo con las ecuaciones de Hamilton.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 7 de 9">
+      <div class="content">
+        <h2>¿Qué ocurre al salir del <span class="accent">intervalo de energía observado durante el ajuste</span>?</h2>
+        <p class="lede">Dividimos los datos de prueba por energía inicial: ID cae dentro del rango de los datos de entrenamiento; OOD queda fuera.</p>
+        <div class="grid">
+          <div class="panel">
+            <h3>RMSE del campo por componente - q̇ / ṗ</h3>
+            <table class="table">
+              <thead><tr><th>Modelo</th><th>ID<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>OOD<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>Rollouts válidos (total)</th></tr></thead>
+              <tbody>
+                <tr><td>MLP-32</td><td>0.00113 / 0.00616</td><td>0.00665 / 0.0686</td><td>200 / 200</td></tr>
+                <tr><td>HNN-32</td><td>0.00141 / 0.00331</td><td>0.0306 / 0.0736</td><td>200 / 200</td></tr>
+                <tr><td>MLP-64</td><td>0.00118 / 0.00353</td><td>0.00801 / 0.0533</td><td>200 / 200</td></tr>
+                <tr><td>HNN-64</td><td>0.00104 / 0.00280</td><td>0.0232 / 0.0422</td><td>200 / 200</td></tr>
+                <tr><td>MLP-128</td><td><b>0.000922</b> / 0.00285</td><td><b>0.00664</b> / 0.0475</td><td>200 / 200</td></tr>
+                <tr><td>HNN-128</td><td>0.00108 / <b>0.00225</b></td><td>0.0239 / <b>0.0397</b></td><td>200 / 200</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel">
+            <div class="stat">186 : 14</div>
+            <div class="stat-label">Trayectorias ID : OOD</div>
+            <p style="margin-top:19px">Existen 186 trayectorias ID y 14 OOD.</p>
+            <p class="callout">Al evaluar con datos fuera del dominio de entrenamiento, el error sube.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 8 de 9">
+      <div class="content">
+        <h2>¿Qué conclusiones se pueden extraer?</h2>
+        <div class="grid">
+          <div class="panel">
+            <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>HNN-128</strong><small>Menor RMSE en la predicción de ṗ. Además, predice mejor la energía.</small></div></div>
+            <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-64</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
+            <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
+          </div>
+          <div class="panel">
+            <h3>En resumen:</h3>
+            <p class="equation">La MLP predice mejor el cambio de la posición y el momento.<br>La HNN aprende mejor la energía del sistema. La  precisión depende del tipo de predicción.</p>
+          </div>
+        </div>
+      
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Diapositiva 9 de 9">
+      <div class="content">
+        <h2>Fuentes</h2>
+        <div class="references">
+          <p class="reference">Chen, R. T. Q., Rubanova, Y., Bettencourt, J., &amp; Duvenaud, D. K. (2018). <em>Neural ordinary differential equations</em>. <em>Advances in Neural Information Processing Systems, 31</em>, 6571–6583.</p>
+          <p class="reference">Greydanus, S., Dzamba, M., &amp; Yosinski, J. (2019). Hamiltonian neural networks. <em>Advances in Neural Information Processing Systems, 32</em>, 15353–15363.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer id="hud">
+    <div class="navgroup">
+      <button class="navbtn" id="prev" aria-label="Diapositiva anterior">←</button>
+      <span id="counter">01 / 09</span>
+      <button class="navbtn" id="next" aria-label="Siguiente diapositiva">→</button>
+    </div>
+    <div id="dots" aria-label="Navegación por diapositivas"></div>
+    <span class="hint">← → para navegar · F para pantalla completa</span>
+  </footer>
+  <script src="mlp-hnn-weights.js"></script>
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll(".slide")];
+      const dots = document.getElementById("dots");
+      const progress = document.getElementById("progress");
+      let current = 0;
+      let optimizerTimer = null;
+      let rolloutTimer = null;
+      slides.forEach((_, i) => {
+        const dot = document.createElement("button");
+        dot.className = "dot";
+        dot.setAttribute("aria-label", `Ir a la diapositiva ${i + 1}`);
+        dot.addEventListener("click", () => show(i));
+        dots.append(dot);
+      });
+      function show(index) {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((slide, i) => {
+          slide.classList.toggle("active", i === current);
+          slide.setAttribute("aria-hidden", i !== current);
+        });
+        [...dots.children].forEach((dot, i) => dot.classList.toggle("active", i === current));
+        document.getElementById("counter").textContent = `${String(current + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
+        progress.style.width = `${(current + 1) / slides.length * 100}%`;
+        if (optimizerTimer !== null && current !== 2) pauseOptimizer();
+        if (rolloutTimer !== null && current !== 5) pauseRollout();
+        if (current === 2) drawOptimizer();
+        if (current === 3) updateNetwork();
+        if (current === 5) updateRollout();
+      }
+      document.getElementById("prev").addEventListener("click", () => show(current - 1));
+      document.getElementById("next").addEventListener("click", () => show(current + 1));
+      window.addEventListener("keydown", event => {
+        if (event.target.closest?.("input, textarea, select, button, [contenteditable]")) return;
+        if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); show(current + 1); }
+        if (event.key === "ArrowLeft") show(current - 1);
+        if (event.key === "Home") show(0);
+        if (event.key === "End") show(slides.length - 1);
+        if (event.key.toLowerCase() === "f") {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+          else document.exitFullscreen?.();
+        }
+      });
+      let touchStart = null;
+      document.getElementById("deck").addEventListener("touchstart", e => { touchStart = e.changedTouches[0].clientX; }, { passive: true });
+      document.getElementById("deck").addEventListener("touchend", e => {
+        if (touchStart === null) return;
+        const delta = e.changedTouches[0].clientX - touchStart;
+        if (Math.abs(delta) > 65) show(current + (delta < 0 ? 1 : -1));
+        touchStart = null;
+      }, { passive: true });
+      show(0);
+
+      const g = 9.81, dt = .008;
+      const angle = document.getElementById("angle"), momentum = document.getElementById("momentum");
+      let q = Number(angle.value), p = Number(momentum.value), trail = [];
+      let pendulumView = "pendulum";
+      function deriv(state) { return [state[1], -g * Math.sin(state[0])]; }
+      function rk4(state, h) {
+        const add = (a, b, scale) => [a[0] + scale * b[0], a[1] + scale * b[1]];
+        const k1 = deriv(state), k2 = deriv(add(state, k1, h / 2));
+        const k3 = deriv(add(state, k2, h / 2)), k4 = deriv(add(state, k3, h));
+        return [state[0] + h * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0]) / 6,
+          state[1] + h * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1]) / 6];
+      }
+      function energy(state) { return state[1] ** 2 / 2 + g * (1 - Math.cos(state[0])); }
+      const pendulumCanvas = document.getElementById("pendulumCanvas");
+      const pctx = pendulumCanvas.getContext("2d");
+      const showPendulum = document.getElementById("showPendulum");
+      const showPhase = document.getElementById("showPhase");
+      const phaseHint = document.getElementById("phaseHint");
+      function fit(canvas, ctx) {
+        const rect = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+        if (!rect.width || !rect.height) return null;
+        const width = Math.round(rect.width * dpr), height = Math.round(rect.height * dpr);
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width; canvas.height = height;
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { w: rect.width, h: rect.height };
+      }
+      const weightsAvailable = Boolean(window.pendulumWeights?.mlp && window.pendulumWeights?.hnn);
+      if (!weightsAvailable) console.error("No se pudieron cargar los pesos entrenados de MLP y HNN.");
+      function forward(network, input) {
+        const activations = [input];
+        let values = input;
+        network.layers.forEach((layer, index) => {
+          values = layer.weights.map((row, i) => {
+            const sum = row.reduce((total, weight, j) => total + weight * values[j], layer.bias[i]);
+            return index < network.layers.length - 1 ? Math.tanh(sum) : sum;
+          });
+          activations.push(values);
+        });
+        return { output: values, activations };
+      }
+      function hamiltonianGradient(network, input, activations) {
+        let gradient = [1];
+        for (let layerIndex = network.layers.length - 1; layerIndex >= 0; layerIndex--) {
+          if (layerIndex < network.layers.length - 1) {
+            gradient = gradient.map((value, i) => value * (1 - activations[layerIndex + 1][i] ** 2));
+          }
+          const weights = network.layers[layerIndex].weights;
+          gradient = Array.from({ length: weights[0].length }, (_, column) =>
+            weights.reduce((sum, row, i) => sum + row[column] * gradient[i], 0));
+        }
+        return gradient;
+      }
+      const networkCanvas = document.getElementById("networkCanvas");
+      const networkContext = networkCanvas.getContext("2d");
+      const netQ = document.getElementById("netQ"), netP = document.getElementById("netP");
+      const networkOutput = document.getElementById("networkOutput");
+      const networkFormula = document.getElementById("networkFormula");
+      const networkReference = document.getElementById("networkReference");
+      const networkCaption = document.getElementById("networkCaption");
+      let networkKind = "mlp";
+      function drawNetwork(activations, output) {
+        const size = fit(networkCanvas, networkContext);
+        if (!size) return;
+        const { w, h } = size, ctx = networkContext;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = "#a7b5c8"; ctx.textAlign = "center"; ctx.font = "12px sans-serif";
+        const x = [w * .10, w * .36, w * .63, w * .9];
+        ctx.fillText("estado", x[0], 24);
+        ctx.fillText("capa 1 · 64", x[1], 24);
+        ctx.fillText("capa 2 · 64", x[2], 24);
+        ctx.fillText(networkKind === "mlp" ? "salidas" : "Hθ", x[3], 24);
+        const ys = Array.from({ length: 7 }, (_, i) => h * (.22 + i * .095));
+        const inputYs = [h * .39, h * .62];
+        const inputLabels = [`q=${Number(netQ.value).toFixed(2)}`, `p=${Number(netP.value).toFixed(1)}`];
+        const visible = [0, 1, 2, 3, 4, 5, 63];
+        ctx.strokeStyle = "rgba(142,188,255,.22)"; ctx.lineWidth = 1;
+        inputYs.forEach((y, i) => ys.forEach(targetY => {
+          ctx.beginPath(); ctx.moveTo(x[0] + 13, y); ctx.lineTo(x[1] - 8, targetY); ctx.stroke();
+        }));
+        ys.forEach((y1, i) => ys.forEach((y2, j) => {
+          const strength = Math.min(1, Math.abs(activations[1][visible[i]]) * .7 + Math.abs(activations[2][visible[j]]) * .3);
+          ctx.strokeStyle = `rgba(114,224,193,${.06 + strength * .2})`;
+          ctx.beginPath(); ctx.moveTo(x[1] + 8, y1); ctx.lineTo(x[2] - 8, y2); ctx.stroke();
+        }));
+        ys.forEach(y => {
+          ctx.strokeStyle = "rgba(242,191,117,.25)";
+          (networkKind === "mlp" ? [h * .4, h * .65] : [h * .52]).forEach(targetY => {
+            ctx.beginPath(); ctx.moveTo(x[2] + 8, y); ctx.lineTo(x[3] - 10, targetY); ctx.stroke();
+          });
+        });
+        function node(cx, cy, label, value, color, radius = 11) {
+          const strength = Math.min(1, Math.abs(value));
+          ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+          ctx.fillStyle = `${color}${Math.round(45 + strength * 140).toString(16).padStart(2, "0")}`;
+          ctx.fill(); ctx.strokeStyle = color; ctx.lineWidth = 1.3; ctx.stroke();
+          ctx.fillStyle = "#edf2f7"; ctx.font = "9px sans-serif"; ctx.fillText(label, cx, cy + 3);
+        }
+        inputYs.forEach((y, i) => node(x[0], y, i === 0 ? "q" : "p", Number(i === 0 ? netQ.value : netP.value), "#8ebcff", 14));
+        ys.forEach((y, i) => node(x[1], y, "", activations[1][visible[i]], "#72e0c1", 8));
+        ys.forEach((y, i) => node(x[2], y, "", activations[2][visible[i]], "#72e0c1", 8));
+        if (networkKind === "mlp") {
+          node(x[3], h * .4, "q̇", output[0], "#f2bf75", 14);
+          node(x[3], h * .65, "ṗ", output[1], "#f2bf75", 14);
+        } else {
+          node(x[3], h * .52, "Hθ", output[0], "#f2bf75", 16);
+        }
+        ctx.fillStyle = "#edf2f7"; ctx.font = "11px sans-serif";
+        ctx.fillText("2 valores", x[0], h - 17);
+        ctx.fillText("64 activaciones", x[1], h - 17);
+        ctx.fillText("64 activaciones", x[2], h - 17);
+        ctx.fillText(networkKind === "mlp" ? "q̇, ṗ" : "un escalar", x[3], h - 17);
+        ctx.fillStyle = "#a7b5c8"; ctx.font = "16px sans-serif";
+        ctx.fillText("⋮", x[1], h * .91); ctx.fillText("⋮", x[2], h * .91);
+      }
+      function updateNetwork() {
+        if (!weightsAvailable) return;
+        const state = [Number(netQ.value), Number(netP.value)];
+        const network = window.pendulumWeights[networkKind];
+        const result = forward(network, state);
+        let field, energyValue = null;
+        if (networkKind === "mlp") {
+          field = result.output;
+        } else {
+          // El campo no identifica la constante aditiva. Alineamos H_theta con
+          // la convencion fisica H(0,0)=0 solo para mostrarlo en pantalla.
+          energyValue = result.output[0] - forward(network, [0, 0]).output[0];
+          const gradient = hamiltonianGradient(network, state, result.activations);
+          field = [gradient[1], -gradient[0]];
+        }
+        if (window.MathJax?.typesetClear) window.MathJax.typesetClear([networkOutput, networkFormula, networkReference]);
+        document.getElementById("netQOut").textContent = `${state[0].toFixed(2)} rad`;
+        document.getElementById("netPOut").textContent = `${state[1].toFixed(1)} kg·m²/s`;
+        if (networkKind === "mlp") {
+          networkOutput.innerHTML = String.raw`\[\begin{aligned}\widehat{\dot q}&=${field[0].toFixed(3)},\\\widehat{\dot p}&=${field[1].toFixed(3)}\end{aligned}\]`;
+          networkFormula.textContent = String.raw`\[\left(q,p\right)\xrightarrow{W,b,\tanh}\left(\widehat{\dot q},\widehat{\dot p}\right)\]`;
+          networkCaption.textContent = "La MLP recibe el estado actual y predice el campo vectorial que representa el cambio del ángulo y del momento.";
+        } else {
+          networkOutput.innerHTML = String.raw`\[\begin{aligned}H_\theta(q,p)-H_\theta(0,0)&=${energyValue.toFixed(3)}\,\mathrm{J}\\\dot q&=${field[0].toFixed(3)},\quad\dot p=${field[1].toFixed(3)}\end{aligned}\]`;
+          networkFormula.textContent = String.raw`\[\dot q=\frac{\partial H_\theta}{\partial p},\qquad \dot p=-\frac{\partial H_\theta}{\partial q}\]`;
+          networkCaption.textContent = "La HNN predice un Hamiltoniano hasta una constante aditiva. El campo vectorial se calcula usando las ecuaciones de Hamilton.";
+        }
+        const physicalQdot = state[1], physicalPdot = -g * Math.sin(state[0]);
+        networkReference.innerHTML = String.raw`Referencia física: \(H=${energy(state).toFixed(3)}\,\mathrm{J}\), \(\dot q=${physicalQdot.toFixed(3)}\), \(\dot p=${physicalPdot.toFixed(3)}\).`;
+        drawNetwork(result.activations, networkKind === "hnn" ? [energyValue] : result.output);
+        if (window.MathJax?.typesetPromise) {
+          window.MathJax.typesetPromise([networkOutput, networkFormula, networkReference]);
+        }
+      }
+      document.getElementById("showMlp").addEventListener("click", () => {
+        networkKind = "mlp";
+        document.getElementById("showMlp").classList.add("on");
+        document.getElementById("showHnn").classList.remove("on");
+        updateNetwork();
+      });
+      document.getElementById("showHnn").addEventListener("click", () => {
+        networkKind = "hnn";
+        document.getElementById("showHnn").classList.add("on");
+        document.getElementById("showMlp").classList.remove("on");
+        updateNetwork();
+      });
+      netQ.addEventListener("input", updateNetwork);
+      netP.addEventListener("input", updateNetwork);
+      updateNetwork();
+      const rolloutCanvas = document.getElementById("rolloutCanvas");
+      const rolloutContext = rolloutCanvas.getContext("2d");
+      const rolloutAngle = document.getElementById("rolloutAngle");
+      const rolloutMomentum = document.getElementById("rolloutMomentum");
+      const rolloutTime = document.getElementById("rolloutTime");
+      const rolloutPlay = document.getElementById("rolloutPlay");
+      const rolloutPosition = document.getElementById("rolloutPosition");
+      const rolloutEnergy = document.getElementById("rolloutEnergy");
+      let rolloutMode = "position", rolloutFrame = 0, rolloutTrajectories = null;
+      function learnedField(kind, state) {
+        const network = window.pendulumWeights[kind];
+        const result = forward(network, state);
+        if (kind === "mlp") return result.output;
+        const gradient = hamiltonianGradient(network, state, result.activations);
+        return [gradient[1], -gradient[0]];
+      }
+      function rk4With(field, state, step) {
+        const add = (a, b, scale) => [a[0] + scale * b[0], a[1] + scale * b[1]];
+        const k1 = field(state), k2 = field(add(state, k1, step / 2));
+        const k3 = field(add(state, k2, step / 2)), k4 = field(add(state, k3, step));
+        return [state[0] + step * (k1[0] + 2*k2[0] + 2*k3[0] + k4[0]) / 6,
+          state[1] + step * (k1[1] + 2*k2[1] + 2*k3[1] + k4[1]) / 6];
+      }
+      function makeRollout(field, initial) {
+        const states = [[...initial]];
+        let state = [...initial], unstableAt = null;
+        for (let i = 0; i < 200; i++) {
+          state = rk4With(field, state, .02);
+          if (!state.every(Number.isFinite) || Math.max(Math.abs(state[0]), Math.abs(state[1])) > 1e4) {
+            unstableAt = (i + 1) * .02;
+            break;
+          }
+          states.push(state);
+        }
+        return { states, unstableAt };
+      }
+      function rolloutRmse(states, reference) {
+        if (states.length !== reference.length) return NaN;
+        const count = reference.length;
+        return Math.sqrt(states.slice(0, count).reduce((sum, state, i) => sum + (state[0] - reference[i][0]) ** 2, 0) / count);
+      }
+      function maxEnergyDrift(states, initialEnergy) {
+        return Math.max(...states.map(state => Math.abs(energy(state) - initialEnergy)));
+      }
+      function formatMetric(value) {
+        return Number.isFinite(value) ? value.toPrecision(3) : "divergió";
+      }
+      function updateRollout() {
+        if (!weightsAvailable) return;
+        const initial = [Number(rolloutAngle.value), Number(rolloutMomentum.value)];
+        const physical = makeRollout(deriv, initial);
+        const mlp = makeRollout(state => learnedField("mlp", state), initial);
+        const hnn = makeRollout(state => learnedField("hnn", state), initial);
+        rolloutTrajectories = { physical, mlp, hnn, initialEnergy: energy(initial) };
+        rolloutFrame = 0;
+        rolloutTime.value = "0";
+        document.getElementById("rolloutAngleOut").textContent = `${initial[0].toFixed(2)} rad`;
+        document.getElementById("rolloutMomentumOut").textContent = `${initial[1].toFixed(1)} kg·m²/s`;
+        document.getElementById("rolloutTimeOut").textContent = "0.00 s";
+        document.getElementById("mlpRolloutRmse").textContent = formatMetric(rolloutRmse(mlp.states, physical.states));
+        document.getElementById("hnnRolloutRmse").textContent = formatMetric(rolloutRmse(hnn.states, physical.states));
+        document.getElementById("mlpEnergyDrift").textContent = formatMetric(maxEnergyDrift(mlp.states, energy(initial)));
+        document.getElementById("hnnEnergyDrift").textContent = formatMetric(maxEnergyDrift(hnn.states, energy(initial)));
+        const divergence = [
+          mlp.unstableAt === null ? null : `MLP en t=${mlp.unstableAt.toFixed(2)} s`,
+          hnn.unstableAt === null ? null : `HNN en t=${hnn.unstableAt.toFixed(2)} s`
+        ].filter(Boolean);
+        const rolloutReadout = document.getElementById("rolloutReadout");
+        if (window.MathJax?.typesetClear) window.MathJax.typesetClear([rolloutReadout]);
+        rolloutReadout.innerHTML = divergence.length
+          ? `Predicción inestable: ${divergence.join("; ")}.`
+          : String.raw`Condición inicial: \(q_0=${initial[0].toFixed(2)}\,\mathrm{rad}\), \(p_0=${initial[1].toFixed(1)}\,\mathrm{kg\,m^2/s}\).`;
+        if (window.MathJax?.typesetPromise) window.MathJax.typesetPromise([rolloutReadout]);
+        if (rolloutPlay) {
+          pauseRollout();
+          rolloutPlay.textContent = "Reproducir";
+        }
+        drawRollout();
+      }
+      function drawRollout() {
+        if (!rolloutTrajectories) return;
+        const size = fit(rolloutCanvas, rolloutContext);
+        if (!size) return;
+        const { w, h } = size, ctx = rolloutContext;
+        const left = 43, right = w - 14, top = 18, bottom = h - 34;
+        const x = time => left + time / 4 * (right - left);
+        const activeStates = [
+          rolloutTrajectories.physical.states,
+          rolloutTrajectories.mlp.states,
+          rolloutTrajectories.hnn.states
+        ];
+        let limit = rolloutMode === "position" ? 3.2 : .01;
+        if (rolloutMode === "energy") {
+          activeStates.forEach(states => states.forEach(state => {
+            limit = Math.max(limit, Math.abs(energy(state) - rolloutTrajectories.initialEnergy) * 1.2);
+          }));
+        }
+        const y = value => bottom - (value + limit) / (2 * limit) * (bottom - top);
+        const valueFor = state => rolloutMode === "position"
+          ? state[0]
+          : energy(state) - rolloutTrajectories.initialEnergy;
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.strokeStyle = "rgba(192,211,231,.12)"; ctx.fillStyle = "#a7b5c8"; ctx.lineWidth = 1;
+        for (let second = 0; second <= 4; second++) {
+          const pointX = x(second);
+          ctx.beginPath(); ctx.moveTo(pointX, top); ctx.lineTo(pointX, bottom); ctx.stroke();
+          ctx.fillText(String(second), pointX, bottom + 14);
+        }
+        [-1, 0, 1].forEach(tick => {
+          const value = tick * limit;
+          ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
+          ctx.textAlign = "right";
+          ctx.fillText(rolloutMode === "position" ? value.toFixed(0) : value.toPrecision(1), left - 6, y(value));
+          ctx.textAlign = "center";
+        });
+        ctx.fillStyle = "#a7b5c8"; ctx.textAlign = "right";
+        ctx.fillText("tiempo [s]", right, h - 9);
+        ctx.save(); ctx.translate(11, top + 8); ctx.rotate(-Math.PI/2); ctx.textAlign = "left";
+        ctx.fillText(rolloutMode === "position" ? "ángulo q [rad]" : "cambio de energía [J]", 0, 0);
+        ctx.restore();
+        const lines = [
+          { key: "physical", color: "#edf2f7" },
+          { key: "mlp", color: "#8ebcff" },
+          { key: "hnn", color: "#72e0c1" }
+        ];
+        lines.forEach(({ key, color }) => {
+          const states = rolloutTrajectories[key].states;
+          if (states.length < 2) return;
+          ctx.beginPath();
+          states.forEach((state, index) => {
+            const pointX = x(index * .02), pointY = y(valueFor(state));
+            if (index === 0) ctx.moveTo(pointX, pointY); else ctx.lineTo(pointX, pointY);
+          });
+          ctx.strokeStyle = color; ctx.lineWidth = key === "physical" ? 1.7 : 2; ctx.stroke();
+          const state = states[Math.min(rolloutFrame, states.length - 1)];
+          ctx.beginPath(); ctx.arc(x(Math.min(rolloutFrame * .02, 4)), y(valueFor(state)), 4, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.fill();
+        });
+        const cursorX = x(rolloutFrame * .02);
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(242,191,117,.75)";
+        ctx.beginPath(); ctx.moveTo(cursorX, top); ctx.lineTo(cursorX, bottom); ctx.stroke(); ctx.setLineDash([]);
+        document.getElementById("rolloutTimeOut").textContent = `${(rolloutFrame * .02).toFixed(2)} s`;
+      }
+      function pauseRollout() {
+        if (rolloutTimer !== null) window.clearInterval(rolloutTimer);
+        rolloutTimer = null;
+        if (rolloutPlay) rolloutPlay.textContent = rolloutFrame ? "Continuar" : "Reproducir";
+      }
+      function toggleRollout() {
+        if (rolloutTimer !== null) { pauseRollout(); return; }
+        if (rolloutFrame >= 200) {
+          rolloutFrame = 0;
+          rolloutTime.value = "0";
+        }
+        rolloutPlay.textContent = "Pausar";
+        rolloutTimer = window.setInterval(() => {
+          rolloutFrame = Math.min(200, rolloutFrame + 2);
+          rolloutTime.value = String(rolloutFrame * .02);
+          drawRollout();
+          if (rolloutFrame >= 200) pauseRollout();
+        }, 55);
+      }
+      function setRolloutMode(mode) {
+        rolloutMode = mode;
+        rolloutPosition.classList.toggle("on", mode === "position");
+        rolloutEnergy.classList.toggle("on", mode === "energy");
+        rolloutPosition.setAttribute("aria-pressed", String(mode === "position"));
+        rolloutEnergy.setAttribute("aria-pressed", String(mode === "energy"));
+        drawRollout();
+      }
+      rolloutAngle.addEventListener("input", updateRollout);
+      rolloutMomentum.addEventListener("input", updateRollout);
+      rolloutTime.addEventListener("input", () => {
+        rolloutFrame = Math.round(Number(rolloutTime.value) / .02);
+        drawRollout();
+      });
+      rolloutPosition.addEventListener("click", () => setRolloutMode("position"));
+      rolloutEnergy.addEventListener("click", () => setRolloutMode("energy"));
+      rolloutPlay.addEventListener("click", toggleRollout);
+      document.getElementById("rolloutReset").addEventListener("click", updateRollout);
+      window.addEventListener("resize", () => { if (current === 5) drawRollout(); });
+      updateRollout();
+      function drawPendulum() {
+        const size = fit(pendulumCanvas, pctx);
+        if (!size) return;
+        const { w, h } = size, ox = w * .5, oy = h * .22, length = Math.min(w * .29, h * .52);
+        pctx.clearRect(0, 0, w, h);
+        if (pendulumView === "phase") {
+          drawPhasePortrait(w, h);
+          return;
+        }
+        pctx.strokeStyle = "rgba(192,211,231,.16)"; pctx.lineWidth = 1;
+        pctx.beginPath(); pctx.moveTo(20, oy); pctx.lineTo(w - 20, oy); pctx.stroke();
+        const x = ox + length * Math.sin(q), y = oy + length * Math.cos(q);
+        pctx.strokeStyle = "#72e0c1"; pctx.lineWidth = 3; pctx.beginPath(); pctx.moveTo(ox, oy); pctx.lineTo(x, y); pctx.stroke();
+        pctx.fillStyle = "#edf2f7"; pctx.beginPath(); pctx.arc(ox, oy, 5, 0, Math.PI * 2); pctx.fill();
+        pctx.shadowColor = "rgba(114,224,193,.65)"; pctx.shadowBlur = 20;
+        pctx.fillStyle = "#72e0c1"; pctx.beginPath(); pctx.arc(x, y, 15, 0, Math.PI * 2); pctx.fill(); pctx.shadowBlur = 0;
+        pctx.fillStyle = "#a7b5c8"; pctx.font = "12px sans-serif";
+        pctx.fillText(`H = ${energy([q,p]).toFixed(3)} J`, 15, h - 15);
+        const plotX = 28, plotY = h * .72, plotW = w - 56, plotH = h * .2;
+        pctx.strokeStyle = "rgba(192,211,231,.22)"; pctx.beginPath(); pctx.moveTo(plotX, plotY); pctx.lineTo(plotX + plotW, plotY); pctx.stroke();
+        pctx.strokeStyle = "#8ebcff"; pctx.lineWidth = 1.5; pctx.beginPath();
+        trail.forEach((point, i) => {
+          const px = plotX + (i / 260) * plotW, py = plotY - point[0] / 3.2 * plotH;
+          if (i === 0) pctx.moveTo(px, py); else pctx.lineTo(px, py);
+        });
+        pctx.stroke();
+      }
+      function drawPhasePortrait(w, h) {
+        const left = 43, right = w - 14, top = 14, bottom = h - 30;
+        const qMin = -Math.PI, qMax = Math.PI, pMin = -7, pMax = 7;
+        const px = value => left + (value - qMin) / (qMax - qMin) * (right - left);
+        const py = value => bottom - (value - pMin) / (pMax - pMin) * (bottom - top);
+        pctx.clearRect(0, 0, w, h);
+        pctx.font = "10px sans-serif"; pctx.textAlign = "center"; pctx.textBaseline = "middle";
+        pctx.strokeStyle = "rgba(192,211,231,.11)"; pctx.fillStyle = "#a7b5c8"; pctx.lineWidth = 1;
+        [-Math.PI, -Math.PI/2, 0, Math.PI/2, Math.PI].forEach(value => {
+          const x = px(value);
+          pctx.beginPath(); pctx.moveTo(x, top); pctx.lineTo(x, bottom); pctx.stroke();
+          pctx.fillText(value === 0 ? "0" : `${(value / Math.PI).toFixed(value % Math.PI === 0 ? 0 : 1)}π`, x, bottom + 15);
+        });
+        [-6, -3, 0, 3, 6].forEach(value => {
+          const y = py(value);
+          pctx.beginPath(); pctx.moveTo(left, y); pctx.lineTo(right, y); pctx.stroke();
+          pctx.textAlign = "right"; pctx.fillText(String(value), left - 7, y);
+          pctx.textAlign = "center";
+        });
+        pctx.strokeStyle = "rgba(192,211,231,.4)";
+        pctx.beginPath(); pctx.moveTo(left, py(0)); pctx.lineTo(right, py(0)); pctx.stroke();
+        pctx.beginPath(); pctx.moveTo(px(0), top); pctx.lineTo(px(0), bottom); pctx.stroke();
+        pctx.fillStyle = "#a7b5c8"; pctx.textAlign = "right";
+        pctx.fillText("q [rad]", right, h - 7);
+        pctx.save(); pctx.translate(11, top + 8); pctx.rotate(-Math.PI/2); pctx.textAlign = "left";
+        pctx.fillText("p [kg·m²/s]", 0, 0); pctx.restore();
+
+        [2, 6, 12, 20, 30].forEach((level, index) => {
+          pctx.beginPath();
+          let drawing = false;
+          for (let i = 0; i <= 240; i++) {
+            const stateQ = qMin + (qMax - qMin) * i / 240;
+            const potential = g * (1 - Math.cos(stateQ));
+            const radicand = 2 * (level - potential);
+            if (radicand < 0) { drawing = false; continue; }
+            const stateP = Math.sqrt(radicand);
+            if (!drawing) { pctx.moveTo(px(stateQ), py(stateP)); drawing = true; }
+            else pctx.lineTo(px(stateQ), py(stateP));
+          }
+          drawing = false;
+          for (let i = 240; i >= 0; i--) {
+            const stateQ = qMin + (qMax - qMin) * i / 240;
+            const radicand = 2 * (level - g * (1 - Math.cos(stateQ)));
+            if (radicand < 0) { drawing = false; continue; }
+            const stateP = -Math.sqrt(radicand);
+            if (!drawing) { pctx.moveTo(px(stateQ), py(stateP)); drawing = true; }
+            else pctx.lineTo(px(stateQ), py(stateP));
+          }
+          pctx.strokeStyle = `rgba(142,188,255,${.17 + index * .035})`; pctx.lineWidth = 1.2; pctx.stroke();
+        });
+
+        for (let fieldQ = -2.5; fieldQ <= 2.51; fieldQ += 1.25) {
+          for (let fieldP = -6; fieldP <= 6.01; fieldP += 3) {
+            const velocity = [fieldP, -g * Math.sin(fieldQ)];
+            const magnitude = Math.hypot(...velocity) || 1;
+            const startX = px(fieldQ), startY = py(fieldP);
+            const dx = velocity[0] / magnitude * 15, dy = -velocity[1] / magnitude * 15;
+            pctx.strokeStyle = "rgba(192,211,231,.4)"; pctx.fillStyle = pctx.strokeStyle; pctx.lineWidth = 1.2;
+            pctx.beginPath(); pctx.moveTo(startX, startY); pctx.lineTo(startX + dx, startY + dy); pctx.stroke();
+            const theta = Math.atan2(dy, dx);
+            pctx.beginPath(); pctx.moveTo(startX + dx, startY + dy);
+            pctx.lineTo(startX + dx - 5 * Math.cos(theta - .45), startY + dy - 5 * Math.sin(theta - .45));
+            pctx.lineTo(startX + dx - 5 * Math.cos(theta + .45), startY + dy - 5 * Math.sin(theta + .45));
+            pctx.closePath(); pctx.fill();
+          }
+        }
+        if (trail.length > 1) {
+          pctx.beginPath();
+          let previousQ = null;
+          trail.forEach((point, index) => {
+            const wrapped = Math.atan2(Math.sin(point[0]), Math.cos(point[0]));
+            if (index === 0 || Math.abs(wrapped - previousQ) > Math.PI) pctx.moveTo(px(wrapped), py(point[1]));
+            else pctx.lineTo(px(wrapped), py(point[1]));
+            previousQ = wrapped;
+          });
+          pctx.strokeStyle = "#72e0c1"; pctx.lineWidth = 2.3; pctx.stroke();
+        }
+        const stateQ = Math.atan2(Math.sin(q), Math.cos(q)), stateX = px(stateQ), stateY = py(p);
+        const drawVector = (vector, color, label, offset) => {
+          const magnitude = Math.hypot(...vector) || 1;
+          const dx = vector[0] / magnitude * 45, dy = -vector[1] / magnitude * 45;
+          const startX = stateX + offset, startY = stateY;
+          pctx.strokeStyle = color; pctx.fillStyle = color; pctx.lineWidth = 2.5;
+          pctx.beginPath(); pctx.moveTo(startX, startY); pctx.lineTo(startX + dx, startY + dy); pctx.stroke();
+          const theta = Math.atan2(dy, dx);
+          pctx.beginPath(); pctx.moveTo(startX + dx, startY + dy);
+          pctx.lineTo(startX + dx - 7 * Math.cos(theta - .5), startY + dy - 7 * Math.sin(theta - .5));
+          pctx.lineTo(startX + dx - 7 * Math.cos(theta + .5), startY + dy - 7 * Math.sin(theta + .5));
+          pctx.closePath(); pctx.fill();
+          pctx.font = "bold 11px sans-serif"; pctx.textAlign = "left"; pctx.fillText(label, startX + dx + 4, startY + dy);
+        };
+        drawVector([g * Math.sin(q), p], "#f2bf75", "∇H", -4);
+        drawVector([p, -g * Math.sin(q)], "#72e0c1", "J∇H", 4);
+        pctx.fillStyle = "#edf2f7"; pctx.beginPath(); pctx.arc(stateX, stateY, 4, 0, Math.PI * 2); pctx.fill();
+      }
+      function setPendulumView(view) {
+        pendulumView = view;
+        showPendulum.classList.toggle("on", view === "pendulum");
+        showPhase.classList.toggle("on", view === "phase");
+        showPendulum.setAttribute("aria-pressed", String(view === "pendulum"));
+        showPhase.setAttribute("aria-pressed", String(view === "phase"));
+        if (window.MathJax?.typesetClear) window.MathJax.typesetClear([phaseHint]);
+        phaseHint.textContent = view === "phase"
+          ? String.raw`Las flechas indican el campo de velocidades en el plano \((q,p)\). Cada curva representa los estados de la trayectoria partiendo de una condición inicial, y en ella se logra observar la conservación de la energía total \(H\). El gradiente de la energía \(\nabla H\) apunta en la dirección de máximo aumento de la energía, mientras que la trayectoria es perpendicular al gradiente.`
+          : "Al cambiar el estado inicial, la energía se conserva.";
+        if (window.MathJax?.typesetPromise) window.MathJax.typesetPromise([phaseHint]);
+        drawPendulum();
+      }
+      showPendulum.addEventListener("click", () => setPendulumView("pendulum"));
+      showPhase.addEventListener("click", () => setPendulumView("phase"));
+
+      const optimizerCanvas = document.getElementById("optimizerCanvas");
+      const optimizerContext = optimizerCanvas.getContext("2d");
+      const learningRate = document.getElementById("learningRate");
+      const learningRateOut = document.getElementById("learningRateOut");
+      const optimizerReadout = document.getElementById("optimizerReadout");
+      const optimizerFeedback = document.getElementById("optimizerFeedback");
+      const optimizerDescription = document.getElementById("optimizerDescription");
+      const optimizerPlay = document.getElementById("optimizerPlay");
+      let optimizerKind = "sgd";
+      let optimizerState;
+      const optimizerNames = { sgd: "SGD", momentum: "Momentum", adam: "Adam" };
+      const optimizerExplanations = {
+        sgd: "SGD sigue la inclinación del paisaje donde se encuentra.",
+        momentum: "Momentum recuerda la dirección anterior para avanzar de forma más estable",
+        adam: "Adam también recuerda el impulso anterior y ajusta el tamaño del paso según la pendiente del paisaje de pérdida en cada dirección"
+      };
+      function lossAt(weights) { return .5 * (weights[0] ** 2 + 8 * weights[1] ** 2); }
+      function resetOptimizer() {
+        pauseOptimizer();
+        optimizerState = { weights: [2.8, 1.5], velocity: [0, 0], first: [0, 0], second: [0, 0], step: 0, path: [[2.8, 1.5]] };
+        optimizerPlay.textContent = "Iniciar";
+        drawOptimizer();
+      }
+      function stepOptimizer() {
+        if (optimizerState.step >= 240) { pauseOptimizer(); return; }
+        const { weights, velocity, first, second, step } = optimizerState;
+        const previousLoss = lossAt(weights);
+        const gradient = [weights[0], 8 * weights[1]], rate = Number(learningRate.value);
+        if (optimizerKind === "sgd") {
+          weights[0] -= rate * gradient[0];
+          weights[1] -= rate * gradient[1];
+        } else if (optimizerKind === "momentum") {
+          for (let i = 0; i < 2; i++) {
+            velocity[i] = .8 * velocity[i] + gradient[i];
+            weights[i] -= rate * velocity[i];
+          }
+        } else {
+          const beta1 = .9, beta2 = .999, nextStep = step + 1;
+          for (let i = 0; i < 2; i++) {
+            first[i] = beta1 * first[i] + (1 - beta1) * gradient[i];
+            second[i] = beta2 * second[i] + (1 - beta2) * gradient[i] ** 2;
+            const correctedFirst = first[i] / (1 - beta1 ** nextStep);
+            const correctedSecond = second[i] / (1 - beta2 ** nextStep);
+            weights[i] -= rate * correctedFirst / (Math.sqrt(correctedSecond) + 1e-8);
+          }
+        }
+        optimizerState.step++;
+        optimizerState.path.push([...weights]);
+        drawOptimizer();
+        const nextLoss = lossAt(weights);
+        if (nextLoss > previousLoss * 1.01 && nextLoss > .01) {
+          optimizerFeedback.textContent = "La pérdida subió: prueba con un paso menor o con un optimizador adaptativo.";
+        }
+        if (!weights.every(Number.isFinite) || Math.max(Math.abs(weights[0]), Math.abs(weights[1])) > 8) {
+          optimizerFeedback.textContent = "El paso es demasiado grande: los pesos se alejaron. Reduce η o cambia el optimizador.";
+          pauseOptimizer();
+        }
+      }
+      function pauseOptimizer() {
+        if (optimizerTimer !== null) window.clearInterval(optimizerTimer);
+        optimizerTimer = null;
+        if (optimizerPlay) optimizerPlay.textContent = optimizerState?.step ? "Continuar" : "Iniciar";
+      }
+      function toggleOptimizer() {
+        if (optimizerTimer !== null) { pauseOptimizer(); return; }
+        if (optimizerState.step >= 240 || Math.max(Math.abs(optimizerState.weights[0]), Math.abs(optimizerState.weights[1])) > 8) resetOptimizer();
+        optimizerPlay.textContent = "Pausar";
+        optimizerTimer = window.setInterval(stepOptimizer, 90);
+      }
+      function drawOptimizer() {
+        const size = fit(optimizerCanvas, optimizerContext);
+        if (!size || !optimizerState) return;
+        const { w, h } = size, ctx = optimizerContext;
+        const left = 42, right = w - 18, top = 18, bottom = h - 34;
+        const x = value => left + (value + 3.5) / 7 * (right - left);
+        const y = value => bottom - (value + 2.2) / 4.4 * (bottom - top);
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.strokeStyle = "rgba(192,211,231,.12)"; ctx.fillStyle = "#a7b5c8"; ctx.lineWidth = 1;
+        [-3, -1.5, 0, 1.5, 3].forEach(value => {
+          ctx.beginPath(); ctx.moveTo(x(value), top); ctx.lineTo(x(value), bottom); ctx.stroke();
+          ctx.fillText(String(value), x(value), bottom + 14);
+        });
+        [-2, -1, 0, 1, 2].forEach(value => {
+          ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
+          ctx.textAlign = "right"; ctx.fillText(String(value), left - 6, y(value)); ctx.textAlign = "center";
+        });
+        [1, 2, 4, 8, 16, 24].forEach((level, index) => {
+          ctx.beginPath();
+          for (let i = 0; i <= 200; i++) {
+            const theta = 2 * Math.PI * i / 200;
+            const w1 = Math.sqrt(2 * level) * Math.cos(theta);
+            const w2 = Math.sqrt(level / 4) * Math.sin(theta);
+            if (i === 0) ctx.moveTo(x(w1), y(w2)); else ctx.lineTo(x(w1), y(w2));
+          }
+          ctx.closePath(); ctx.strokeStyle = `rgba(142,188,255,${.18 + index * .035})`; ctx.stroke();
+        });
+        const path = optimizerState.path;
+        if (path.length > 1) {
+          ctx.beginPath();
+          path.forEach((point, index) => {
+            const px = x(point[0]), py = y(point[1]);
+            if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          });
+          ctx.strokeStyle = "#f2bf75"; ctx.lineWidth = 2; ctx.stroke();
+          path.forEach(point => {
+            if (Math.abs(point[0]) > 3.5 || Math.abs(point[1]) > 2.2) return;
+            ctx.beginPath(); ctx.arc(x(point[0]), y(point[1]), 2.2, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(242,191,117,.75)"; ctx.fill();
+          });
+        }
+        ctx.beginPath(); ctx.arc(x(0), y(0), 5, 0, Math.PI * 2); ctx.fillStyle = "#72e0c1"; ctx.fill();
+        const current = optimizerState.weights;
+        if (Math.abs(current[0]) <= 3.5 && Math.abs(current[1]) <= 2.2) {
+          ctx.beginPath(); ctx.arc(x(current[0]), y(current[1]), 6, 0, Math.PI * 2);
+          ctx.fillStyle = "#f2bf75"; ctx.fill(); ctx.strokeStyle = "#101b2d"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        ctx.fillStyle = "#a7b5c8"; ctx.textAlign = "right";
+        ctx.fillText("peso w₁", right, h - 9);
+        ctx.save(); ctx.translate(11, top + 8); ctx.rotate(-Math.PI/2); ctx.textAlign = "left";
+        ctx.fillText("peso w₂", 0, 0); ctx.restore();
+        const currentLoss = lossAt(current);
+        optimizerReadout.textContent = `${optimizerNames[optimizerKind]} · paso ${optimizerState.step} · peso 1: ${current[0].toFixed(2)} · peso 2: ${current[1].toFixed(2)} · pérdida: ${Number.isFinite(currentLoss) ? currentLoss.toPrecision(3) : "divergió"}`;
+        learningRateOut.textContent = Number(learningRate.value).toFixed(2);
+        if (optimizerState.step === 0) optimizerFeedback.textContent = "El punto naranja representa los pesos actuales. El punto verde indica el error mínimo.";
+        else if (currentLoss < .01) optimizerFeedback.textContent = "¡Estás cerca del mínimo de la función de pérdida! El error bajó considerablemente.";
+        else if (optimizerState.step % 8 === 0) optimizerFeedback.textContent = "Cada actualización usa la pendiente en el punto actual para ajustar los pesos.";
+      }
+      document.querySelectorAll("[data-optimizer]").forEach(button => {
+        button.addEventListener("click", () => {
+          optimizerKind = button.dataset.optimizer;
+          document.querySelectorAll("[data-optimizer]").forEach(option => {
+            const selected = option === button;
+            option.classList.toggle("on", selected);
+            option.setAttribute("aria-pressed", String(selected));
+          });
+          optimizerDescription.textContent = optimizerExplanations[optimizerKind];
+          resetOptimizer();
+        });
+      });
+      learningRate.addEventListener("input", () => {
+        learningRateOut.textContent = Number(learningRate.value).toFixed(2);
+        resetOptimizer();
+      });
+      document.getElementById("optimizerStep").addEventListener("click", stepOptimizer);
+      optimizerPlay.addEventListener("click", toggleOptimizer);
+      document.getElementById("optimizerReset").addEventListener("click", resetOptimizer);
+      window.addEventListener("resize", drawOptimizer);
+      resetOptimizer();
+      function tick() {
+        [q,p] = rk4([q,p], dt);
+        trail.push([q,p]); if (trail.length > 261) trail.shift();
+        drawPendulum(); requestAnimationFrame(tick);
+      }
+      function reset() {
+        q = Number(angle.value); p = Number(momentum.value); trail = [];
+        document.getElementById("angleOut").textContent = `${q.toFixed(2)} rad`;
+        document.getElementById("momentumOut").textContent = `${p.toFixed(1)} kg·m²/s`;
+      }
+      angle.addEventListener("input", reset); momentum.addEventListener("input", reset);
+      window.addEventListener("resize", drawPendulum);
+      window.addEventListener("resize", updateNetwork);
+      reset(); tick();
+
+      const hero = document.getElementById("heroCanvas"), hctx = hero.getContext("2d");
+      let phase = 0;
+      function drawHero() {
+        const size = fit(hero, hctx);
+        if (!size) { requestAnimationFrame(drawHero); return; }
+        const { w, h } = size, cx = w * .5, cy = h * .15, r = Math.min(w * .36, h * .58);
+        hctx.clearRect(0,0,w,h);
+        hctx.strokeStyle = "rgba(192,211,231,.18)"; hctx.lineWidth = 1;
+        hctx.beginPath(); hctx.arc(cx,cy,r,0,Math.PI*2); hctx.stroke();
+        const a = .72 * Math.sin(phase), x = cx + r * Math.sin(a), y = cy + r * Math.cos(a);
+        hctx.strokeStyle = "#72e0c1"; hctx.lineWidth = 3; hctx.beginPath(); hctx.moveTo(cx,cy); hctx.lineTo(x,y); hctx.stroke();
+        hctx.fillStyle = "#edf2f7"; hctx.beginPath(); hctx.arc(cx,cy,5,0,Math.PI*2); hctx.fill();
+        hctx.shadowColor = "rgba(114,224,193,.65)"; hctx.shadowBlur = 24;
+        hctx.fillStyle = "#72e0c1"; hctx.beginPath(); hctx.arc(x,y,15,0,Math.PI*2); hctx.fill(); hctx.shadowBlur = 0;
+        phase += .014; requestAnimationFrame(drawHero);
+      }
+      drawHero();
+    })();
+  </script>
+</body>
+</html>
