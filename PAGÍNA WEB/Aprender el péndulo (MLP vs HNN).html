@@ -470,14 +470,14 @@
           <div class="panel">
             <h3>RMSE del campo por componente - q̇ / ṗ</h3>
             <table class="table">
-              <thead><tr><th>Modelo</th><th>ID<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>OOD<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>Rollouts válidos (total)</th></tr></thead>
+              <thead><tr><th>Modelo</th><th>ID<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>OOD<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th></tr></thead>
               <tbody>
-                <tr><td>MLP-32</td><td>0.00113 / 0.00616</td><td>0.00665 / 0.0686</td><td>200 / 200</td></tr>
-                <tr><td>HNN-32</td><td>0.00141 / 0.00331</td><td>0.0306 / 0.0736</td><td>200 / 200</td></tr>
-                <tr><td>MLP-64</td><td>0.00118 / 0.00353</td><td>0.00801 / 0.0533</td><td>200 / 200</td></tr>
-                <tr><td>HNN-64</td><td>0.00104 / 0.00280</td><td>0.0232 / 0.0422</td><td>200 / 200</td></tr>
-                <tr><td>MLP-128</td><td><b>0.000922</b> / 0.00285</td><td><b>0.00664</b> / 0.0475</td><td>200 / 200</td></tr>
-                <tr><td>HNN-128</td><td>0.00108 / <b>0.00225</b></td><td>0.0239 / <b>0.0397</b></td><td>200 / 200</td></tr>
+                <tr><td>MLP-32</td><td>0.00113 / 0.00616</td><td>0.00665 / 0.0686</td></tr>
+                <tr><td>HNN-32</td><td>0.00141 / 0.00331</td><td>0.0306 / 0.0736</td></tr>
+                <tr><td>MLP-64</td><td>0.00118 / 0.00353</td><td>0.00801 / 0.0533</td></tr>
+                <tr><td>HNN-64</td><td>0.00104 / 0.00280</td><td>0.0232 / 0.0422</td></tr>
+                <tr><td>MLP-128</td><td><b>0.000922</b> / 0.00285</td><td><b>0.00664</b> / 0.0475</td></tr>
+                <tr><td>HNN-128</td><td>0.00108 / <b>0.00225</b></td><td>0.0239 / <b>0.0397</b></td></tr>
               </tbody>
             </table>
           </div>
@@ -497,12 +497,12 @@
         <div class="grid">
           <div class="panel">
             <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>HNN-128</strong><small>Menor RMSE en la predicción de ṗ. Además, predice mejor la energía.</small></div></div>
-            <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-64</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
+            <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-128</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
             <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
           </div>
           <div class="panel">
             <h3>En resumen:</h3>
-            <p class="equation">La MLP predice mejor el cambio de la posición y el momento.<br>La HNN aprende mejor la energía del sistema. La  precisión depende del tipo de predicción.</p>
+            <p class="equation">La precisión depende del tipo de predicción.</p>
           </div>
         </div>
       
