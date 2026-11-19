@@ -153,23 +153,18 @@
     .rollout-metric { padding: 10px; border: 1px solid var(--line); border-radius: 12px; }
     .rollout-metric strong { display: block; color: var(--mint); font-variant-numeric: tabular-nums; }
     .rollout-metric span { color: var(--muted); font-size: .76rem; }
-    #deck .slide:nth-child(8) { padding-top: 16px; }
-    #deck .slide:nth-child(8) .method { padding: 8px 0; }
-    #deck .slide:nth-child(8) .note { margin-top: 12px !important; }
-    #deck .slide:nth-child(8) .grid { grid-template-columns: minmax(0, 1fr); }
-    #deck .slide:nth-child(8) .grid > .panel:first-child {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
-    }
-    #deck .slide:nth-child(8) .method {
-      flex-direction: column; align-items: center; justify-content: center;
-      gap: 10px; height: 100%; padding: 16px 14px; border: 1px solid var(--line);
-      border-radius: 14px; background: rgba(255,255,255,.025); text-align: center;
-    }
-    #deck .slide:nth-child(8) .method small { text-align: center; }
-    #deck .slide:nth-child(8) .panel:last-child { display: flex; flex-direction: column; justify-content: center; }
-    #deck .slide:nth-child(8) .panel:last-child h3 { text-align: center; }
-    #deck .slide:nth-child(8) .panel:last-child .equation { text-align: center; }
-    #deck .slide:nth-child(9) { padding-top: 24px; padding-bottom: 72px; }
+    #deck .slide:nth-child(7) { padding-top: 14px; padding-bottom: 72px; }
+    .merged-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2.4vw, 30px); align-items: start; }
+    .merged-column { min-width: 0; }
+    .merged-column h2 { font-size: clamp(1.6rem, 2.2vw, 2.5rem); margin-bottom: 10px; }
+    .merged-column .lede { font-size: clamp(.85rem, 1.05vw, 1rem); line-height: 1.45; margin-bottom: 10px; }
+    #deck .slide:nth-child(7) .merged-columns .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    #deck .slide:nth-child(7) .merged-columns .panel { padding: 14px; }
+    #deck .slide:nth-child(7) .merged-columns .conclusions .grid > .panel:first-child { display: grid; grid-template-columns: 1fr; gap: 4px; }
+    #deck .slide:nth-child(7) .merged-columns .conclusions .panel:last-child { display: flex; flex-direction: column; justify-content: center; }
+    #deck .slide:nth-child(7) .merged-columns .conclusions .panel:last-child h3,
+    #deck .slide:nth-child(7) .merged-columns .conclusions .panel:last-child .equation { text-align: center; }
+    #deck .slide:nth-child(8) { padding-top: 24px; padding-bottom: 72px; }
     .references { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; margin-top: 26px; }
     .reference { margin: 0; padding-left: 1.25em; text-indent: -1.25em; font-size: clamp(.82rem, 1vw, .98rem); line-height: 1.5; text-align: left !important; overflow-wrap: anywhere; }
     #deck .slide:nth-child(7) { padding-top: 16px; padding-bottom: 72px; }
@@ -229,6 +224,7 @@
       .optimizer-grid { grid-template-columns: 1fr; }
       .rollout-grid { grid-template-columns: 1fr; }
       .references { grid-template-columns: 1fr; gap: 12px; }
+      .merged-columns { grid-template-columns: 1fr; }
       .slide { align-items: flex-start; }
       .controls { grid-template-columns: minmax(0, 1.1fr) minmax(48px, 1fr) 58px; gap: 8px 6px; }
       #deck .slide:nth-child(8) .grid > .panel:first-child { grid-template-columns: 1fr; }
@@ -263,7 +259,7 @@
 <body>
   <div id="progress"></div>
   <main id="deck" aria-live="polite">
-    <section class="slide active" aria-label="Diapositiva 1 de 9">
+    <section class="slide active" aria-label="Diapositiva 1 de 8">
       <div class="content hero">
         <div>
           
@@ -277,7 +273,7 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 2 de 9">
+    <section class="slide" aria-label="Diapositiva 2 de 8">
       <div class="content">
         <h2>El movimiento del péndulo puede describirse por su <span class="accent">ángulo y su momento angular</span>.</h2>
         <div class="grid">
@@ -320,17 +316,18 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 3 de 9">
+    <section class="slide" aria-label="Diapositiva 3 de 8">
       <div class="content">
         <h2>Entrenar es ajustar los pesos de la red para <span class="accent">disminuir el error en la predicción</span>.</h2>
         <p class="lede">El optimizador avanza sobre el paisaje de pérdida buscando el error mínimo. Existen diferentes métodos para disminuir el error, como SGD, Momentum y Adam. Además, se puede modificar su tasa de aprendizaje para observar el recorrido del optimizador sobre el paisaje de pérdida.</p>
         <div class="grid optimizer-grid">
           <div class="panel">
-            <canvas id="optimizerCanvas" class="chart" aria-label="Superficie de pérdida y ruta interactiva del optimizador"></canvas>
+            <canvas id="optimizerCanvas" class="chart" aria-label="Paisaje tridimensional de pérdida y ruta interactiva del optimizador"></canvas>
             <div class="sim-legend">
               <span><i class="legend-mark" style="background:#f2bf75"></i>Pesos actuales</span>
-              <span><i class="legend-mark" style="background:#72e0c1"></i>Menor error</span>
-              <span>Curvas: mismo nivel de pérdida</span>
+              <span><i class="legend-mark" style="background:#72e0c1"></i>Mínimo global</span>
+              <span><i class="legend-mark" style="background:#8ebcff"></i>Mínimos locales</span>
+              <span>Superficie 3D · cuatro mínimos</span>
             </div>
           </div>
           <div class="panel optimizer-card">
@@ -361,7 +358,7 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 4 de 9">
+    <section class="slide" aria-label="Diapositiva 4 de 8">
       <div class="content">
         <h2>¿Qué hace cada red con los datos de entrada?</h2>
         <p class="muted">El diagrama muestra la arquitectura de las redes MLP-64 y HNN-64.</p>
@@ -389,7 +386,7 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 5 de 9">
+    <section class="slide" aria-label="Diapositiva 5 de 8">
       <div class="content">
         <h2>¿Aumentar la cantidad de neuronas significa obtener <span class="accent">mejores trayectorias</span>?</h2>
         <p class="muted">Se entrenaron redes con dos capas ocultas de 32, 64 y 128 neuronas.</p>
@@ -413,7 +410,7 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 6 de 9">
+    <section class="slide" aria-label="Diapositiva 6 de 8">
       <div class="content">
         <h2>¿Cómo evoluciona la trayectoria de <span class="accent">cada red para cierta condición inicial</span>?</h2>
         <p class="lede">Predecimos la evolución de la trayectoria con los pesos entrenados a partir de una condición inicial. </p>
@@ -462,59 +459,60 @@
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 7 de 9">
+    <section class="slide" aria-label="Diapositiva 7 de 8">
       <div class="content">
-        <h2>¿Qué ocurre al salir del <span class="accent">intervalo de energía observado durante el ajuste</span>?</h2>
-        <p class="lede">Dividimos los datos de prueba por energía inicial: ID cae dentro del rango de los datos de entrenamiento; OOD queda fuera.</p>
-        <div class="grid">
-          <div class="panel">
-            <h3>RMSE del campo por componente - q̇ / ṗ</h3>
-            <table class="table">
-              <thead><tr><th>Modelo</th><th>ID<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>OOD<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th></tr></thead>
-              <tbody>
-                <tr><td>MLP-32</td><td>0.00113 / 0.00616</td><td>0.00665 / 0.0686</td></tr>
-                <tr><td>HNN-32</td><td>0.00141 / 0.00331</td><td>0.0306 / 0.0736</td></tr>
-                <tr><td>MLP-64</td><td>0.00118 / 0.00353</td><td>0.00801 / 0.0533</td></tr>
-                <tr><td>HNN-64</td><td>0.00104 / 0.00280</td><td>0.0232 / 0.0422</td></tr>
-                <tr><td>MLP-128</td><td><b>0.000922</b> / 0.00285</td><td><b>0.00664</b> / 0.0475</td></tr>
-                <tr><td>HNN-128</td><td>0.00108 / <b>0.00225</b></td><td>0.0239 / <b>0.0397</b></td></tr>
-              </tbody>
-            </table>
+        <div class="merged-columns">
+          <div class="merged-column">
+            <h2>¿Qué ocurre al salir del <span class="accent">intervalo de energía observado durante el ajuste</span>?</h2>
+            <p class="lede">Dividimos los datos de prueba por energía inicial: ID cae dentro del rango de los datos de entrenamiento; OOD queda fuera.</p>
+            <div class="grid">
+              <div class="panel">
+                <h3>RMSE del campo por componente - q̇ / ṗ</h3>
+                <table class="table">
+                  <thead><tr><th>Modelo</th><th>ID<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th><th>OOD<br><small>q̇ (rad/s) / ṗ (kg·m²/s²)</small></th></tr></thead>
+                  <tbody>
+                    <tr><td>MLP-32</td><td>0.00113 / 0.00616</td><td>0.00665 / 0.0686</td></tr>
+                    <tr><td>HNN-32</td><td>0.00141 / 0.00331</td><td>0.0306 / 0.0736</td></tr>
+                    <tr><td>MLP-64</td><td>0.00118 / 0.00353</td><td>0.00801 / 0.0533</td></tr>
+                    <tr><td>HNN-64</td><td>0.00104 / 0.00280</td><td>0.0232 / 0.0422</td></tr>
+                    <tr><td>MLP-128</td><td><b>0.000922</b> / 0.00285</td><td><b>0.00664</b> / 0.0475</td></tr>
+                    <tr><td>HNN-128</td><td>0.00108 / <b>0.00225</b></td><td>0.0239 / <b>0.0397</b></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="panel">
+                <p>Existen 186 trayectorias ID y 14 OOD.</p>
+                <p class="callout">Al evaluar con datos fuera del dominio de entrenamiento, el error sube.</p>
+              </div>
+            </div>
           </div>
-          <div class="panel">
-            <div class="stat">186 : 14</div>
-            <div class="stat-label">Trayectorias ID : OOD</div>
-            <p style="margin-top:19px">Existen 186 trayectorias ID y 14 OOD.</p>
-            <p class="callout">Al evaluar con datos fuera del dominio de entrenamiento, el error sube.</p>
+
+          <div class="merged-column conclusions">
+            <h2>¿Qué conclusiones se pueden extraer?</h2>
+            <div class="grid">
+              <div class="panel">
+                <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>HNN-128</strong><small>Menor RMSE en la predicción de ṗ. Además, predice mejor la energía.</small></div></div>
+                <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-128</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
+                <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
+              </div>
+              <div class="panel">
+                <h3>En resumen:</h3>
+                <p class="equation">La precisión depende del tipo de predicción.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="slide" aria-label="Diapositiva 8 de 9">
-      <div class="content">
-        <h2>¿Qué conclusiones se pueden extraer?</h2>
-        <div class="grid">
-          <div class="panel">
-            <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>HNN-128</strong><small>Menor RMSE en la predicción de ṗ. Además, predice mejor la energía.</small></div></div>
-            <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-128</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
-            <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
-          </div>
-          <div class="panel">
-            <h3>En resumen:</h3>
-            <p class="equation">La precisión depende del tipo de predicción.</p>
-          </div>
-        </div>
-      
-      </div>
-    </section>
-
-    <section class="slide" aria-label="Diapositiva 9 de 9">
+    <section class="slide" aria-label="Diapositiva 8 de 8">
       <div class="content">
         <h2>Fuentes</h2>
         <div class="references">
           <p class="reference">Chen, R. T. Q., Rubanova, Y., Bettencourt, J., &amp; Duvenaud, D. K. (2018). <em>Neural ordinary differential equations</em>. <em>Advances in Neural Information Processing Systems, 31</em>, 6571–6583.</p>
           <p class="reference">Greydanus, S., Dzamba, M., &amp; Yosinski, J. (2019). Hamiltonian neural networks. <em>Advances in Neural Information Processing Systems, 32</em>, 15353–15363.</p>
+          <p class="reference">Gruver, N., Finzi, M., Stanton, S., &amp; Wilson, A. G. (2022). <em>Deconstructing the inductive biases of Hamiltonian neural networks</em>. <em>International Conference on Learning Representations (ICLR)</em>. <a href="https://openreview.net/forum?id=EDeVYpT42oS">https://openreview.net/forum?id=EDeVYpT42oS</a></p>
+          <p class="reference">Kingma, D. P., &amp; Ba, J. (2015). <em>Adam: A method for stochastic optimization</em>. <em>International Conference on Learning Representations (ICLR)</em>. <a href="https://arxiv.org/abs/1412.6980">https://arxiv.org/abs/1412.6980</a></p>
         </div>
       </div>
     </section>
@@ -522,7 +520,7 @@
   <footer id="hud">
     <div class="navgroup">
       <button class="navbtn" id="prev" aria-label="Diapositiva anterior">←</button>
-      <span id="counter">01 / 09</span>
+      <span id="counter">01 / 08</span>
       <button class="navbtn" id="next" aria-label="Siguiente diapositiva">→</button>
     </div>
     <div id="dots" aria-label="Navegación por diapositivas"></div>
@@ -1084,7 +1082,11 @@
         momentum: "Momentum recuerda la dirección anterior para avanzar de forma más estable",
         adam: "Adam también recuerda el impulso anterior y ajusta el tamaño del paso según la pendiente del paisaje de pérdida en cada dirección"
       };
-      function lossAt(weights) { return .5 * (weights[0] ** 2 + 8 * weights[1] ** 2); }
+      function lossAt(weights) {
+        const [w1, w2] = weights;
+        return .06 * ((w1 ** 2 - 4) ** 2 + (w2 ** 2 - 1) ** 2) +
+          .01 * (w1 ** 3 - 12 * w1 + w2 ** 3 - 3 * w2) + .2;
+      }
       function resetOptimizer() {
         pauseOptimizer();
         optimizerState = { weights: [2.8, 1.5], velocity: [0, 0], first: [0, 0], second: [0, 0], step: 0, path: [[2.8, 1.5]] };
@@ -1095,7 +1097,12 @@
         if (optimizerState.step >= 240) { pauseOptimizer(); return; }
         const { weights, velocity, first, second, step } = optimizerState;
         const previousLoss = lossAt(weights);
-        const gradient = [weights[0], 8 * weights[1]], rate = Number(learningRate.value);
+        const [w1, w2] = weights;
+        const gradient = [
+          .24 * w1 * (w1 ** 2 - 4) + .03 * (w1 ** 2 - 4),
+          .24 * w2 * (w2 ** 2 - 1) + .03 * (w2 ** 2 - 1)
+        ];
+        const rate = Number(learningRate.value);
         if (optimizerKind === "sgd") {
           weights[0] -= rate * gradient[0];
           weights[1] -= rate * gradient[1];
@@ -1141,59 +1148,106 @@
         const size = fit(optimizerCanvas, optimizerContext);
         if (!size || !optimizerState) return;
         const { w, h } = size, ctx = optimizerContext;
-        const left = 42, right = w - 18, top = 18, bottom = h - 34;
-        const x = value => left + (value + 3.5) / 7 * (right - left);
-        const y = value => bottom - (value + 2.2) / 4.4 * (bottom - top);
         ctx.clearRect(0, 0, w, h);
-        ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.strokeStyle = "rgba(192,211,231,.12)"; ctx.fillStyle = "#a7b5c8"; ctx.lineWidth = 1;
-        [-3, -1.5, 0, 1.5, 3].forEach(value => {
-          ctx.beginPath(); ctx.moveTo(x(value), top); ctx.lineTo(x(value), bottom); ctx.stroke();
-          ctx.fillText(String(value), x(value), bottom + 14);
+        const centerX = w * .5, baseY = h * .72, scaleX = Math.min(w * .22, h * .5);
+        const scaleY = h * .105, scaleZ = h * .48, maxLoss = 5.4;
+        const project = (w1, w2, loss = lossAt([w1, w2])) => ({
+          x: centerX + (w1 / 3.5 - w2 / 2.2) * scaleX,
+          y: baseY + (w1 / 3.5 + w2 / 2.2) * scaleY - Math.min(loss / maxLoss, 1.08) * scaleZ
         });
-        [-2, -1, 0, 1, 2].forEach(value => {
-          ctx.beginPath(); ctx.moveTo(left, y(value)); ctx.lineTo(right, y(value)); ctx.stroke();
-          ctx.textAlign = "right"; ctx.fillText(String(value), left - 6, y(value)); ctx.textAlign = "center";
-        });
-        [1, 2, 4, 8, 16, 24].forEach((level, index) => {
+        const drawLine = (points, color, width, dash = []) => {
           ctx.beginPath();
-          for (let i = 0; i <= 200; i++) {
-            const theta = 2 * Math.PI * i / 200;
-            const w1 = Math.sqrt(2 * level) * Math.cos(theta);
-            const w2 = Math.sqrt(level / 4) * Math.sin(theta);
-            if (i === 0) ctx.moveTo(x(w1), y(w2)); else ctx.lineTo(x(w1), y(w2));
-          }
-          ctx.closePath(); ctx.strokeStyle = `rgba(142,188,255,${.18 + index * .035})`; ctx.stroke();
+          points.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+          });
+          ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash); ctx.stroke(); ctx.setLineDash([]);
+        };
+        const floorCorners = [
+          project(-3.5, -2.2, 0), project(3.5, -2.2, 0),
+          project(3.5, 2.2, 0), project(-3.5, 2.2, 0)
+        ];
+        const floorGradient = ctx.createLinearGradient(0, h * .45, w, h);
+        floorGradient.addColorStop(0, "rgba(41,76,101,.35)");
+        floorGradient.addColorStop(1, "rgba(13,25,42,.7)");
+        ctx.beginPath();
+        floorCorners.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+        ctx.closePath(); ctx.fillStyle = floorGradient; ctx.fill();
+        ctx.strokeStyle = "rgba(192,211,231,.2)"; ctx.lineWidth = 1; ctx.stroke();
+        [-.5, 0, .5].forEach(tick => {
+          drawLine([project(tick * 3.5, -2.2, 0), project(tick * 3.5, 2.2, 0)], "rgba(192,211,231,.12)", 1);
+          drawLine([project(-3.5, tick * 2.2, 0), project(3.5, tick * 2.2, 0)], "rgba(192,211,231,.12)", 1);
         });
+        const segments = 18, cells = [];
+        for (let i = 0; i < segments; i++) {
+          const x0 = -3.5 + 7 * i / segments, x1 = -3.5 + 7 * (i + 1) / segments;
+          for (let j = 0; j < segments; j++) {
+            const y0 = -2.2 + 4.4 * j / segments, y1 = -2.2 + 4.4 * (j + 1) / segments;
+            const weights = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+            const loss = weights.reduce((sum, point) => sum + lossAt(point), 0) / weights.length;
+            cells.push({ weights, loss, depth: (x0 + x1) / 7 + (y0 + y1) / 4.4 });
+          }
+        }
+        cells.sort((a, b) => a.depth - b.depth);
+        cells.forEach(cell => {
+          const points = cell.weights.map(point => project(point[0], point[1]));
+          const intensity = Math.min(cell.loss / maxLoss, 1);
+          ctx.beginPath();
+          points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+          ctx.closePath();
+          const hue = intensity < .58 ? 195 - 30 * intensity / .58 : 165 - 127 * (intensity - .58) / .42;
+          const lightness = 28 + Math.sin(intensity * Math.PI) * 8 + intensity * 6;
+          ctx.fillStyle = `hsla(${hue}, ${54 + intensity * 8}%, ${lightness}%, .94)`;
+          ctx.fill();
+        });
+        ctx.lineWidth = .75; ctx.strokeStyle = "rgba(218,241,245,.32)";
+        for (let i = 0; i <= segments; i++) {
+          const w1 = -3.5 + 7 * i / segments, w2 = -2.2 + 4.4 * i / segments;
+          drawLine(Array.from({ length: segments + 1 }, (_, j) => project(w1, -2.2 + 4.4 * j / segments)), ctx.strokeStyle, ctx.lineWidth);
+          drawLine(Array.from({ length: segments + 1 }, (_, j) => project(-3.5 + 7 * j / segments, w2)), ctx.strokeStyle, ctx.lineWidth);
+        }
+        drawLine([project(-3.5, 0, 0), project(3.5, 0, 0)], "rgba(142,188,255,.75)", 1.5);
+        drawLine([project(0, -2.2, 0), project(0, 2.2, 0)], "rgba(114,224,193,.75)", 1.5);
+        drawLine([project(0, 0, 0), project(0, 0, maxLoss)], "rgba(242,191,117,.75)", 1.5);
+        ctx.font = "11px sans-serif"; ctx.fillStyle = "#d3deeb"; ctx.textBaseline = "middle";
+        const xLabel = project(3.5, 0, 0), yLabel = project(0, 2.2, 0), zLabel = project(0, 0, maxLoss);
+        ctx.textAlign = "left"; ctx.fillText("w₁", xLabel.x + 7, xLabel.y + 2);
+        ctx.textAlign = "right"; ctx.fillText("w₂", yLabel.x - 7, yLabel.y + 2);
+        ctx.textAlign = "center"; ctx.fillText("L(w₁,w₂)", zLabel.x, zLabel.y - 10);
         const path = optimizerState.path;
         if (path.length > 1) {
-          ctx.beginPath();
-          path.forEach((point, index) => {
-            const px = x(point[0]), py = y(point[1]);
-            if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-          });
-          ctx.strokeStyle = "#f2bf75"; ctx.lineWidth = 2; ctx.stroke();
+          const pathPoints = path.map(point => project(point[0], point[1], lossAt(point) + .22));
+          ctx.save(); ctx.shadowColor = "rgba(242,191,117,.55)"; ctx.shadowBlur = 8;
+          drawLine(pathPoints, "#f2bf75", 2.5); ctx.restore();
           path.forEach(point => {
             if (Math.abs(point[0]) > 3.5 || Math.abs(point[1]) > 2.2) return;
-            ctx.beginPath(); ctx.arc(x(point[0]), y(point[1]), 2.2, 0, Math.PI * 2);
+            const projected = project(point[0], point[1], lossAt(point) + .22);
+            ctx.beginPath(); ctx.arc(projected.x, projected.y, 2, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(242,191,117,.75)"; ctx.fill();
           });
         }
-        ctx.beginPath(); ctx.arc(x(0), y(0), 5, 0, Math.PI * 2); ctx.fillStyle = "#72e0c1"; ctx.fill();
+        [[-2, -1], [-2, 1], [2, -1]].forEach(weights => {
+          const point = project(weights[0], weights[1]);
+          ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#8ebcff"; ctx.strokeStyle = "#101b2d"; ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke();
+        });
+        const globalMinimum = project(2, 1);
+        ctx.save(); ctx.shadowColor = "rgba(114,224,193,.9)"; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(globalMinimum.x, globalMinimum.y, 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#72e0c1"; ctx.fill(); ctx.restore();
         const current = optimizerState.weights;
         if (Math.abs(current[0]) <= 3.5 && Math.abs(current[1]) <= 2.2) {
-          ctx.beginPath(); ctx.arc(x(current[0]), y(current[1]), 6, 0, Math.PI * 2);
-          ctx.fillStyle = "#f2bf75"; ctx.fill(); ctx.strokeStyle = "#101b2d"; ctx.lineWidth = 1.5; ctx.stroke();
+          const currentPoint = project(current[0], current[1], lossAt(current) + .22);
+          ctx.save(); ctx.shadowColor = "rgba(242,191,117,.8)"; ctx.shadowBlur = 12;
+          ctx.beginPath(); ctx.arc(currentPoint.x, currentPoint.y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = "#f2bf75"; ctx.fill(); ctx.strokeStyle = "#101b2d"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
         }
-        ctx.fillStyle = "#a7b5c8"; ctx.textAlign = "right";
-        ctx.fillText("peso w₁", right, h - 9);
-        ctx.save(); ctx.translate(11, top + 8); ctx.rotate(-Math.PI/2); ctx.textAlign = "left";
-        ctx.fillText("peso w₂", 0, 0); ctx.restore();
         const currentLoss = lossAt(current);
         optimizerReadout.textContent = `${optimizerNames[optimizerKind]} · paso ${optimizerState.step} · peso 1: ${current[0].toFixed(2)} · peso 2: ${current[1].toFixed(2)} · pérdida: ${Number.isFinite(currentLoss) ? currentLoss.toPrecision(3) : "divergió"}`;
         learningRateOut.textContent = Number(learningRate.value).toFixed(2);
-        if (optimizerState.step === 0) optimizerFeedback.textContent = "El punto naranja representa los pesos actuales. El punto verde indica el error mínimo.";
-        else if (currentLoss < .01) optimizerFeedback.textContent = "¡Estás cerca del mínimo de la función de pérdida! El error bajó considerablemente.";
+        if (optimizerState.step === 0) optimizerFeedback.textContent = "El punto naranja representa los pesos actuales; los puntos azules y verde marcan mínimos locales y global.";
+        else if (currentLoss < .05) optimizerFeedback.textContent = "¡Estás cerca del mínimo global de la función de pérdida! El error bajó considerablemente.";
+        else if (currentLoss < .42) optimizerFeedback.textContent = "El optimizador llegó a un mínimo local de la función de pérdida.";
         else if (optimizerState.step % 8 === 0) optimizerFeedback.textContent = "Cada actualización usa la pendiente en el punto actual para ajustar los pesos.";
       }
       document.querySelectorAll("[data-optimizer]").forEach(button => {
