@@ -493,11 +493,10 @@
               <div class="panel">
                 <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>HNN-128</strong><small>Menor RMSE en la predicción de ṗ. Además, predice mejor la energía.</small></div></div>
                 <div class="method"><span class="swatch" style="background:var(--blue)"></span><div><strong>MLP-128</strong><small>Tuvo el menor RMSE en la predicción de q̇.</small></div></div>
-                <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
-              </div>
-              <div class="panel">
-                <h3>En resumen:</h3>
-                <p class="equation">La precisión depende del tipo de predicción.</p>
+                <div class="method"><span class="swatch" style="background:var(--mint)"></span><div><strong>MLP-64</strong><small>La MLP obtuvo menores errores de trayectoria.</small></div></div>
+                <div class="method"><span class="swatch" style="background:var(--coral)"></span><div><strong>Extrapolación OOD</strong><small>En el caso de la extrapolación del modelo con valores de energía inicial fuera del rango de entrenamiento, se tienen 14 trayectorias. Esta cantidad es muy pequeña en comparación con el número de trayectorias <em>in-distribution</em>. Por lo tanto, no se puede generalizar con suficiente confianza estadística.</small></div></div>
+                <div class="method"><span class="swatch" style="background:var(--gold)"></span><div><strong>¿Más neuronas equivalen a mayor precisión?</strong><small>Más neuronas no garantizan mayor precisción.</small></div></div>
+                <ul><li>La precisión de predicción depende de qué se estudia y qué modelo se usa.</li></ul>
               </div>
             </div>
           </div>
